@@ -1,0 +1,10 @@
+** Program location
+Defaults to $801 for ROM-based Applesoft. Locations $67/$68 point to
+the start of the program, and the byte preceding it must be #0.
+
+Details:
+- http://www.atarimagazines.com/compute/issue11/36_1_THE_APPLE_GAZETTE_RESOLVING_APPLESOFT_AND_HIRES_GRAPHICS_MEMORY_CONFLICTS.php
+- http://retrocomputing.stackexchange.com/questions/1604
+
+** Format
+DOS stores an additional byte on the end, which should be ignored.
