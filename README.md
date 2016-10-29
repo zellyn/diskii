@@ -2,7 +2,8 @@ diskii
 ======
 diskii is a commandline tool for working with Apple II disk images.
 
-Eventually, it aims to be a comprehensive disk image manipulation tool.
+Eventually, it aims to be a comprehensive disk image manipulation
+tool, but for now only the `applesoft decode` command works.
 
 It is pronounced so as to rhyme with "whiskey".
 
