@@ -3,6 +3,10 @@ diskii
 
 diskii is a commandline tool for working with Apple II disk images.
 
+Its major advantage is that it's written in Go, hence cross-platform.
+
+Its major disadvantage is that it mostly doesn't exist yet.
+
 [![Build Status](https://travis-ci.org/zellyn/diskii.svg?branch=master)](https://travis-ci.org/zellyn/diskii)
 
 Eventually, it aims to be a comprehensive disk image manipulation
