@@ -8,3 +8,11 @@ Details:
 
 ** Format
 DOS stores an additional byte on the end, which should be ignored.
+** Parsing
+See PARSE.INPUT.LINE at
+http://www.txbobsc.com/scsc/scdocumentor/D52C.html
+
+"AT" is ambiguous: it could also be "ATN" or "A TO". Applesoft checks
+by seeing if the character directly after "AT" is "N" OR "O", and
+forcing a non-match with "AT" if so. Note that this doesn't skip
+blanks.
