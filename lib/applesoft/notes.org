@@ -16,3 +16,7 @@ http://www.txbobsc.com/scsc/scdocumentor/D52C.html
 by seeing if the character directly after "AT" is "N" OR "O", and
 forcing a non-match with "AT" if so. Note that this doesn't skip
 blanks.
+
+Data statements and REM statements seem to leave characters completely
+intact (including storing the space, if any, after the "REM" or "DATA"
+keyword).
