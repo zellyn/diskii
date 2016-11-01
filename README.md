@@ -25,3 +25,15 @@ Assuming you have Go installed, run `go get -u github.com/zellyn/diskii`
 
 - [ ] Build per-platform binaries for Linux, MacOS, Windows
 - [ ] Implement CATALOG, deletion, and creation of files in DOS 3.3 images
+
+### Similar tools
+
+- http://a2ciderpress.com/
+- http://applecommander.sourceforge.net/
+- https://github.com/cybernesto/dsktool.rb
+- https://github.com/cmosher01/Apple-II-Disk-Tools
+- https://github.com/madsen/perl-libA2
+- https://github.com/markdavidlong/AppleSAWS
+- https://github.com/dmolony/DiskBrowser
+- https://github.com/deater/dos33fsprogs
+- https://github.com/jtauber/a2disk
