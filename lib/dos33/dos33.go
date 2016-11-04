@@ -6,13 +6,72 @@ package dos33
 import (
 	"encoding/binary"
 	"fmt"
+	"strings"
+
+	"github.com/zellyn/diskii/lib/disk"
 )
 
-type FreeSectorMap [4]byte // Bit map of free sectors in a track
+const (
+	// VTOCTrack is the track on a DOS3.3 that holds the VTOC.
+	VTOCTrack = 17
+	// VTOCSector is the sector on a DOS3.3 that holds the VTOC.
+	VTOCSector = 0
+)
+
+type DiskSector struct {
+	Track  byte
+	Sector byte
+}
+
+// GetTrack returns the track that a DiskSector was loaded from.
+func (ds DiskSector) GetTrack() byte {
+	return ds.Track
+}
+
+// SetTrack sets the track that a DiskSector was loaded from.
+func (ds DiskSector) SetTrack(track byte) {
+	ds.Track = track
+}
+
+// GetSector returns the sector that a DiskSector was loaded from.
+func (ds DiskSector) GetSector() byte {
+	return ds.Sector
+}
+
+// SetSector sets the sector that a DiskSector was loaded from.
+func (ds DiskSector) SetSector(sector byte) {
+	ds.Sector = sector
+}
+
+// TrackFreeSectors maps the free sectors in a single track.
+type TrackFreeSectors [4]byte // Bit map of free sectors in a track
+
+// IsFree returns true if the given sector on a track is free (or if
+// sector > 15).
+func (t TrackFreeSectors) IsFree(sector byte) bool {
+	if sector >= 16 {
+		return false
+	}
+	bits := byte(1) << (sector % 8)
+	if sector < 8 {
+		return t[1]&bits > 0
+	}
+	return t[0]&bits > 0
+}
+
+// UnusedClear returns true if the unused bytes of the free sector map
+// for a track are zeroes (as they're supposed to be).
+func (t TrackFreeSectors) UnusedClear() bool {
+	return t[2] == 0 && t[3] == 0
+}
+
+// DiskFreeSectors maps the free sectors on a disk.
+type DiskFreeSectors [50]TrackFreeSectors
 
 // VTOC is the struct used to hold the DOS 3.3 VTOC structure.
 // See page 4-2 of Beneath Apple DOS.
 type VTOC struct {
+	DiskSector
 	Unused1       byte     // Not used
 	CatalogTrack  byte     // Track number of first catalog sector
 	CatalogSector byte     // Sector number of first catalog sector
@@ -30,11 +89,42 @@ type VTOC struct {
 	NumTracks              byte   // Number of tracks per diskette (normally 35)
 	NumSectors             byte   // Number of sectors per track (13 or 16)
 	BytesPerSector         uint16 // Number of bytes per sector (LO/HI format)
-	FreeSectors            [50]FreeSectorMap
+	FreeSectors            DiskFreeSectors
 }
 
-// MarshalBinary marshals the VTOC sector to bytes. Error is always nil.
-func (v VTOC) MarshalBinary() (data []byte, err error) {
+// Validate checks a VTOC sector to make sure it looks normal.
+func (v *VTOC) Validate() error {
+	if v.Volume == 255 {
+		return fmt.Errorf("expected volume to be 0-254, but got 255")
+	}
+	if v.DOSRelease != 3 {
+		return fmt.Errorf("expected DOS release number to be 3; got %d", v.DOSRelease)
+	}
+	if v.TrackDirection != 1 && v.TrackDirection != -1 {
+		return fmt.Errorf("expected track direction to be 1 or -1; got %d", v.TrackDirection)
+	}
+	if v.NumTracks != 35 {
+		return fmt.Errorf("expected number of tracks to be 35; got %d", v.NumTracks)
+	}
+	if v.NumSectors != 13 && v.NumSectors != 16 {
+		return fmt.Errorf("expected number of sectors per track to be 13 or 16; got %d", v.NumSectors)
+	}
+	if v.BytesPerSector != 256 {
+		return fmt.Errorf("expected 256 bytes per sector; got %d", v.BytesPerSector)
+	}
+	if v.TrackSectorListMaxSize != 122 {
+		return fmt.Errorf("expected 122 track/sector pairs per track/sector list sector; got %d", v.TrackSectorListMaxSize)
+	}
+	for i, tf := range v.FreeSectors {
+		if !tf.UnusedClear() {
+			return fmt.Errorf("unused bytes of free-sector list for track %d are not zeroes", i)
+		}
+	}
+	return nil
+}
+
+// ToSector marshals the VTOC sector to bytes.
+func (v VTOC) ToSector() []byte {
 	buf := make([]byte, 256)
 	buf[0x00] = v.Unused1
 	buf[0x01] = v.CatalogTrack
@@ -54,7 +144,7 @@ func (v VTOC) MarshalBinary() (data []byte, err error) {
 	for i, m := range v.FreeSectors {
 		copyBytes(buf[0x38+4*i:0x38+4*i+4], m[:])
 	}
-	return buf, nil
+	return buf
 }
 
 // copyBytes is just like the builtin copy, but just for byte slices,
@@ -66,11 +156,11 @@ func copyBytes(dst, src []byte) int {
 	return copy(dst, src)
 }
 
-// UnmarshalBinary unmarshals the VTOC sector from bytes. Input is
+// FromSector unmarshals the VTOC sector from bytes. Input is
 // expected to be exactly 256 bytes.
-func (v *VTOC) UnmarshalBinary(data []byte) error {
+func (v *VTOC) FromSector(data []byte) {
 	if len(data) != 256 {
-		return fmt.Errorf("VTOC.UnmarshalBinary expects exactly 256 bytes; got %d", len(data))
+		panic(fmt.Sprintf("VTOC.FromSector expects exactly 256 bytes; got %d", len(data)))
 	}
 
 	v.Unused1 = data[0x00]
@@ -91,8 +181,6 @@ func (v *VTOC) UnmarshalBinary(data []byte) error {
 	for i := range v.FreeSectors {
 		copyBytes(v.FreeSectors[i][:], data[0x38+4*i:0x38+4*i+4])
 	}
-
-	return nil
 }
 
 func DefaultVTOC() VTOC {
@@ -109,9 +197,9 @@ func DefaultVTOC() VTOC {
 		BytesPerSector:         0x100,
 	}
 	for i := range v.FreeSectors {
-		v.FreeSectors[i] = FreeSectorMap{}
+		v.FreeSectors[i] = TrackFreeSectors{}
 		if i < 35 {
-			v.FreeSectors[i] = FreeSectorMap([4]byte{0xff, 0xff, 0x00, 0x00})
+			v.FreeSectors[i] = TrackFreeSectors([4]byte{0xff, 0xff, 0x00, 0x00})
 		}
 	}
 	return v
@@ -120,6 +208,7 @@ func DefaultVTOC() VTOC {
 // CatalogSector is the struct used to hold the DOS 3.3 Catalog
 // sector.
 type CatalogSector struct {
+	DiskSector
 	Unused1    byte        // Not used
 	NextTrack  byte        // Track number of next catalog sector (usually 11 hex)
 	NextSector byte        // Sector number of next catalog sector
@@ -127,25 +216,25 @@ type CatalogSector struct {
 	FileDescs  [7]FileDesc // File descriptive entries
 }
 
-// MarshalBinary marshals the CatalogSector to bytes. Error is always nil.
-func (cs CatalogSector) MarshalBinary() (data []byte, err error) {
+// ToSector marshals the CatalogSector to bytes.
+func (cs CatalogSector) ToSector() []byte {
 	buf := make([]byte, 256)
 	buf[0x00] = cs.Unused1
 	buf[0x01] = cs.NextTrack
 	buf[0x02] = cs.NextSector
 	copyBytes(buf[0x03:0x0b], cs.Unused2[:])
 	for i, fd := range cs.FileDescs {
-		fdBytes, _ := fd.MarshalBinary()
+		fdBytes := fd.ToBytes()
 		copyBytes(buf[0x0b+35*i:0x0b+35*(i+1)], fdBytes)
 	}
-	return buf, nil
+	return buf
 }
 
-// UnmarshalBinary unmarshals the CatalogSector from bytes. Input is
+// FromSector unmarshals the CatalogSector from bytes. Input is
 // expected to be exactly 256 bytes.
-func (cs *CatalogSector) UnmarshalBinary(data []byte) error {
+func (cs *CatalogSector) FromSector(data []byte) {
 	if len(data) != 256 {
-		return fmt.Errorf("CatalogSector.UnmarshalBinary expects exactly 256 bytes; got %d", len(data))
+		panic(fmt.Sprintf("CatalogSector.FromSector expects exactly 256 bytes; got %d", len(data)))
 	}
 
 	cs.Unused1 = data[0x00]
@@ -154,12 +243,8 @@ func (cs *CatalogSector) UnmarshalBinary(data []byte) error {
 	copyBytes(cs.Unused2[:], data[0x03:0x0b])
 
 	for i := range cs.FileDescs {
-		if err := cs.FileDescs[i].UnmarshalBinary(data[0x0b+35*i : 0x0b+35*(i+1)]); err != nil {
-			return err
-		}
+		cs.FileDescs[i].FromBytes(data[0x0b+35*i : 0x0b+35*(i+1)])
 	}
-
-	return nil
 }
 
 type Filetype byte
@@ -177,6 +262,14 @@ const (
 	FileTypeRelocatable Filetype = 0x10 // RELOCATABLE object module file
 	FileTypeA           Filetype = 0x20 // A type file
 	FileTypeB           Filetype = 0x40 // B type file
+)
+
+type FileDescStatus int
+
+const (
+	FileDescStatusNormal FileDescStatus = iota
+	FileDescStatusDeleted
+	FileDescStatusUnused
 )
 
 // FileDesc is the struct used to represent the DOS 3.3 File
@@ -199,8 +292,8 @@ type FileDesc struct {
 	SectorCount uint16
 }
 
-// MarshalBinary marshals the FileDesc to bytes. Error is always nil.
-func (fd FileDesc) MarshalBinary() (data []byte, err error) {
+// ToBytes marshals the FileDesc to bytes.
+func (fd FileDesc) ToBytes() []byte {
 	buf := make([]byte, 35)
 	buf[0x00] = fd.TrackSectorListTrack
 	buf[0x01] = fd.TrackSectorListSector
@@ -208,21 +301,158 @@ func (fd FileDesc) MarshalBinary() (data []byte, err error) {
 	copyBytes(buf[0x03:0x21], fd.Filename[:])
 	binary.LittleEndian.PutUint16(buf[0x21:0x23], fd.SectorCount)
 
-	return buf, nil
+	return buf
 }
 
-// UnmarshalBinary unmarshals the FileDesc from bytes. Input is
+// FromBytes unmarshals the FileDesc from bytes. Input is
 // expected to be exactly 35 bytes.
-func (fd *FileDesc) UnmarshalBinary(data []byte) error {
+func (fd *FileDesc) FromBytes(data []byte) {
 	if len(data) != 35 {
-		return fmt.Errorf("FileDesc.UnmarshalBinary expects exactly 35 bytes; got %d", len(data))
+		panic(fmt.Sprintf("FileDesc.FromBytes expects exactly 35 bytes; got %d", len(data)))
 	}
 
 	fd.TrackSectorListTrack = data[0x00]
 	fd.TrackSectorListSector = data[0x01]
 	fd.Filetype = Filetype(data[0x02])
-	copyBytes(data[0x03:0x21], fd.Filename[:])
+	copyBytes(fd.Filename[:], data[0x03:0x21])
 	fd.SectorCount = binary.LittleEndian.Uint16(data[0x21:0x23])
+}
 
-	return nil
+// Status returns whether the FileDesc describes a deleted file, a
+// normal file, or has never been used.
+func (fd *FileDesc) Status() FileDescStatus {
+	switch fd.TrackSectorListTrack {
+	case 0:
+		return FileDescStatusUnused // Never been used.
+	case 0xff:
+		return FileDescStatusDeleted
+	default:
+		return FileDescStatusNormal
+	}
+}
+
+// FilenameString returns the filename of a FileDesc as a normal
+// string.
+func (fd *FileDesc) FilenameString() string {
+	var slice []byte
+	if fd.Status() == FileDescStatusDeleted {
+		slice = append(slice, fd.Filename[0:len(fd.Filename)-1]...)
+	} else {
+		slice = append(slice, fd.Filename[:]...)
+	}
+	for i := range slice {
+		slice[i] -= 0x80
+	}
+	return strings.TrimRight(string(slice), " ")
+}
+
+type TrackSector struct {
+	Track  byte
+	Sector byte
+}
+
+// TrackSectorList is the struct used to represent DOS 3.3
+// Track/Sector List sectors.
+type TrackSectorList struct {
+	DiskSector
+	Unused1      byte    // Not used
+	NextTrack    byte    // Track number of next T/S List sector if one was needed or zero if no more T/S List sectors.
+	NextSector   byte    // Sector number of next T/S List sector (if present).
+	Unused2      [2]byte // Not used
+	SectorOffset uint16  // Sector offset in file of the first sector described by this list.
+	Unused3      [5]byte // Not used
+	TrackSectors [122]TrackSector
+}
+
+// ToSector marshals the TrackSectorList to bytes.
+func (tsl TrackSectorList) ToSector() []byte {
+	buf := make([]byte, 256)
+	buf[0x00] = tsl.Unused1
+	buf[0x01] = tsl.NextTrack
+	buf[0x02] = tsl.NextSector
+	copyBytes(buf[0x03:0x05], tsl.Unused2[:])
+	binary.LittleEndian.PutUint16(buf[0x05:0x07], tsl.SectorOffset)
+	copyBytes(buf[0x07:0x0C], tsl.Unused3[:])
+
+	for i, ts := range tsl.TrackSectors {
+		buf[0x0C+i*2] = ts.Track
+		buf[0x0D+i*2] = ts.Sector
+	}
+	return buf
+}
+
+// FromSector unmarshals the TrackSectorList from bytes. Input is
+// expected to be exactly 256 bytes.
+func (tsl *TrackSectorList) FromSector(data []byte) {
+	if len(data) != 256 {
+		panic(fmt.Sprintf("TrackSectorList.FromSector expects exactly 256 bytes; got %d", len(data)))
+	}
+
+	tsl.Unused1 = data[0x00]
+	tsl.NextTrack = data[0x01]
+	tsl.NextSector = data[0x02]
+	copyBytes(tsl.Unused2[:], data[0x03:0x05])
+	tsl.SectorOffset = binary.LittleEndian.Uint16(data[0x05:0x07])
+	copyBytes(tsl.Unused3[:], data[0x07:0x0C])
+
+	for i := range tsl.TrackSectors {
+		tsl.TrackSectors[i].Track = data[0x0C+i*2]
+		tsl.TrackSectors[i].Sector = data[0x0D+i*2]
+	}
+}
+
+// readCatalogSectors reads the raw CatalogSector structs from a DOS
+// 3.3 disk.
+func readCatalogSectors(d disk.SectorDisk) ([]CatalogSector, error) {
+	v := &VTOC{}
+	err := disk.UnmarshalLogicalSector(d, v, VTOCTrack, VTOCSector)
+	if err != nil {
+		return nil, err
+	}
+	if err := v.Validate(); err != nil {
+		return nil, fmt.Errorf("Invalid VTOC sector: %v", err)
+	}
+
+	nextTrack := v.CatalogTrack
+	nextSector := v.CatalogSector
+	css := []CatalogSector{}
+	for nextTrack != 0 || nextSector != 0 {
+		if nextTrack >= v.NumTracks {
+			return nil, fmt.Errorf("catalog sectors can't be in track %d: disk only has %d tracks", nextTrack, v.NumTracks)
+		}
+		if nextSector >= v.NumSectors {
+			return nil, fmt.Errorf("catalog sectors can't be in sector %d: disk only has %d sectors", nextSector, v.NumSectors)
+		}
+		cs := CatalogSector{}
+		err := disk.UnmarshalLogicalSector(d, &cs, nextTrack, nextSector)
+		if err != nil {
+			return nil, err
+		}
+		css = append(css, cs)
+		nextTrack = cs.NextTrack
+		nextSector = cs.NextSector
+	}
+	return css, nil
+}
+
+// ReadCatalog reads the catalog of a DOS 3.3 disk.
+func ReadCatalog(d disk.SectorDisk) (files, deleted []FileDesc, err error) {
+	css, err := readCatalogSectors(d)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	for _, cs := range css {
+		for _, fd := range cs.FileDescs {
+			switch fd.Status() {
+			case FileDescStatusUnused:
+				// skip
+			case FileDescStatusDeleted:
+				deleted = append(deleted, fd)
+			case FileDescStatusNormal:
+				files = append(files, fd)
+			}
+		}
+	}
+	return files, deleted, nil
 }

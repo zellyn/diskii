@@ -4,24 +4,24 @@ import (
 	"crypto/rand"
 	"reflect"
 	"testing"
+
+	"github.com/zellyn/diskii/lib/disk"
 )
 
 // TestVTOCMarshalRoundtrip checks a simple roundtrip of VTOC data.
 func TestVTOCMarshalRoundtrip(t *testing.T) {
 	buf := make([]byte, 256)
 	rand.Read(buf)
+	buf1 := make([]byte, 256)
+	copy(buf1, buf)
 	vtoc1 := &VTOC{}
-	if err := vtoc1.UnmarshalBinary(buf); err != nil {
-		t.Fatal(err)
-	}
-	buf2, _ := vtoc1.MarshalBinary()
+	vtoc1.FromSector(buf1)
+	buf2 := vtoc1.ToSector()
 	if !reflect.DeepEqual(buf, buf2) {
 		t.Errorf("Buffers differ: %v != %v", buf, buf2)
 	}
 	vtoc2 := &VTOC{}
-	if err := vtoc2.UnmarshalBinary(buf2); err != nil {
-		t.Fatal(err)
-	}
+	vtoc2.FromSector(buf2)
 	if *vtoc1 != *vtoc2 {
 		t.Errorf("Structs differ: %v != %v", vtoc1, vtoc2)
 	}
@@ -31,19 +31,105 @@ func TestVTOCMarshalRoundtrip(t *testing.T) {
 func TestCatalogSectorMarshalRoundtrip(t *testing.T) {
 	buf := make([]byte, 256)
 	rand.Read(buf)
+	buf1 := make([]byte, 256)
+	copy(buf1, buf)
 	cs1 := &CatalogSector{}
-	if err := cs1.UnmarshalBinary(buf); err != nil {
-		t.Fatal(err)
-	}
-	buf2, _ := cs1.MarshalBinary()
+	cs1.FromSector(buf1)
+	buf2 := cs1.ToSector()
 	if !reflect.DeepEqual(buf, buf2) {
 		t.Errorf("Buffers differ: %v != %v", buf, buf2)
 	}
 	cs2 := &CatalogSector{}
-	if err := cs2.UnmarshalBinary(buf2); err != nil {
-		t.Fatal(err)
-	}
+	cs2.FromSector(buf2)
 	if *cs1 != *cs2 {
 		t.Errorf("Structs differ: %v != %v", cs1, cs2)
 	}
+}
+
+// TestTrackSectorListMarshalRoundtrip checks a simple roundtrip of TrackSectorList data.
+func TestTrackSectorListMarshalRoundtrip(t *testing.T) {
+	buf := make([]byte, 256)
+	rand.Read(buf)
+	buf1 := make([]byte, 256)
+	copy(buf1, buf)
+	cs1 := &TrackSectorList{}
+	cs1.FromSector(buf1)
+	buf2 := cs1.ToSector()
+	if !reflect.DeepEqual(buf, buf2) {
+		t.Errorf("Buffers differ: %v != %v", buf, buf2)
+	}
+	cs2 := &TrackSectorList{}
+	cs2.FromSector(buf2)
+	if *cs1 != *cs2 {
+		t.Errorf("Structs differ: %v != %v", cs1, cs2)
+	}
+}
+
+// TestReadCatalog tests the reading of the catalog of a test disk.
+func TestReadCatalog(t *testing.T) {
+	dsk, err := disk.LoadDSK("testdata/dos33test.dsk")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fds, deleted, err := ReadCatalog(dsk)
+
+	fdsWant := []struct {
+		locked bool
+		typ    string
+		size   int
+		name   string
+	}{
+		{true, "A", 3, "HELLO"},
+		{true, "I", 3, "APPLESOFT"},
+		{true, "B", 6, "LOADER.OBJ0"},
+		{true, "B", 42, "FPBASIC"},
+		{true, "B", 42, "INTBASIC"},
+		{true, "A", 3, "MASTER"},
+		{true, "B", 9, "MASTER CREATE"},
+		{true, "I", 9, "COPY"},
+		{true, "B", 3, "COPY.OBJ0"},
+		{true, "A", 9, "COPYA"},
+		{true, "B", 3, "CHAIN"},
+		{true, "A", 14, "RENUMBER"},
+		{true, "A", 3, "FILEM"},
+		{true, "B", 20, "FID"},
+		{true, "A", 3, "CONVERT13"},
+		{true, "B", 27, "MUFFIN"},
+		{true, "A", 3, "START13"},
+		{true, "B", 7, "BOOT13"},
+		{true, "A", 4, "SLOT#"},
+		{false, "A", 3, "EXAMPLE"},
+	}
+
+	deletedWant := []struct {
+		locked bool
+		typ    string
+		size   int
+		name   string
+	}{
+		{false, "A", 3, "EXAMPLE2"},
+		{false, "I", 3, "EXAMPLE3"},
+	}
+
+	if len(fdsWant) != len(fds) {
+		t.Fatalf("Want %d undeleted files; got %d", len(fdsWant), len(fds))
+	}
+
+	if len(deletedWant) != len(deleted) {
+		t.Fatalf("Want %d deleted files; got %d", len(deletedWant), len(deleted))
+	}
+
+	for i, wantInfo := range fdsWant {
+		if want, got := wantInfo.name, fds[i].FilenameString(); want != got {
+			t.Errorf("Want filename %d to be %q; got %q", i+1, want, got)
+		}
+	}
+
+	for i, wantInfo := range deletedWant {
+		if want, got := wantInfo.name, deleted[i].FilenameString(); want != got {
+			t.Errorf("Want deleted filename %d to be %q; got %q", i+1, want, got)
+		}
+	}
+
+	// TODO(zellyn): Check type, size, locked status.
 }
