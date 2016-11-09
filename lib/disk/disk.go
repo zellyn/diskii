@@ -9,6 +9,26 @@ import (
 	"io/ioutil"
 )
 
+// Dos33LogicalToPhysicalSectorMap maps logical sector numbers to physical ones.
+// See [UtA2 9-42 - Read Routines].
+var Dos33LogicalToPhysicalSectorMap = []byte{
+	0x00, 0x0D, 0x0B, 0x09, 0x07, 0x05, 0x03, 0x01,
+	0x0E, 0x0C, 0x0A, 0x08, 0x06, 0x04, 0x02, 0x0F,
+}
+
+// Dos33PhysicalToLogicalSectorMap maps physical sector numbers to logical ones.
+// See [UtA2 9-42 - Read Routines].
+var Dos33PhysicalToLogicalSectorMap = []byte{
+	0x00, 0x07, 0x0E, 0x06, 0x0D, 0x05, 0x0C, 0x04,
+	0x0B, 0x03, 0x0A, 0x02, 0x09, 0x01, 0x08, 0x0F,
+}
+
+// TrackSector is a pair of track/sector bytes.
+type TrackSector struct {
+	Track  byte
+	Sector byte
+}
+
 type SectorDisk interface {
 	// ReadLogicalSector reads a single logical sector from the disk. It
 	// always returns 256 byes.
@@ -50,10 +70,10 @@ func LoadDSK(filename string) (DSK, error) {
 // ReadLogicalSector reads a single logical sector from the disk. It
 // always returns 256 byes.
 func (d DSK) ReadLogicalSector(track byte, sector byte) ([]byte, error) {
-	if track < 0 || track >= DOS33Tracks {
+	if track >= DOS33Tracks {
 		return nil, fmt.Errorf("Expected track between 0 and %d; got %d", DOS33Tracks-1, track)
 	}
-	if sector < 0 || sector >= DOS33Sectors {
+	if sector >= DOS33Sectors {
 		return nil, fmt.Errorf("Expected sector between 0 and %d; got %d", DOS33Sectors-1, sector)
 	}
 
@@ -66,10 +86,10 @@ func (d DSK) ReadLogicalSector(track byte, sector byte) ([]byte, error) {
 // WriteLogicalSector writes a single logical sector to a disk. It
 // expects exactly 256 bytes.
 func (d DSK) WriteLogicalSector(track byte, sector byte, data []byte) error {
-	if track < 0 || track >= DOS33Tracks {
+	if track >= DOS33Tracks {
 		return fmt.Errorf("Expected track between 0 and %d; got %d", DOS33Tracks-1, track)
 	}
-	if sector < 0 || sector >= DOS33Sectors {
+	if sector >= DOS33Sectors {
 		return fmt.Errorf("Expected sector between 0 and %d; got %d", DOS33Sectors-1, sector)
 	}
 	if len(data) != 256 {

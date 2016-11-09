@@ -346,11 +346,6 @@ func (fd *FileDesc) FilenameString() string {
 	return strings.TrimRight(string(slice), " ")
 }
 
-type TrackSector struct {
-	Track  byte
-	Sector byte
-}
-
 // TrackSectorList is the struct used to represent DOS 3.3
 // Track/Sector List sectors.
 type TrackSectorList struct {
@@ -361,7 +356,7 @@ type TrackSectorList struct {
 	Unused2      [2]byte // Not used
 	SectorOffset uint16  // Sector offset in file of the first sector described by this list.
 	Unused3      [5]byte // Not used
-	TrackSectors [122]TrackSector
+	TrackSectors [122]disk.TrackSector
 }
 
 // ToSector marshals the TrackSectorList to bytes.
