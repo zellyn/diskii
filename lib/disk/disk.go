@@ -6,7 +6,16 @@ package disk
 
 import (
 	"fmt"
-	"io/ioutil"
+	"path"
+	"strings"
+)
+
+const (
+	DOS33Tracks  = 35 // Tracks per disk
+	DOS33Sectors = 16 // Sectors per track
+	// DOS33DiskBytes is the number of bytes on a DOS 3.3 disk.
+	DOS33DiskBytes  = 143360             // 35 tracks * 16 sectors * 256 bytes
+	DOS33TrackBytes = 256 * DOS33Sectors // Bytes per track
 )
 
 // Dos33LogicalToPhysicalSectorMap maps logical sector numbers to physical ones.
@@ -106,96 +115,22 @@ func (md MappedDisk) WriteLogicalSector(track byte, sector byte, data []byte) er
 	return md.sectorDisk.WritePhysicalSector(track, physicalSector, data)
 }
 
-// Sectors returns the number of sectors on the DSK image.
+// Sectors returns the number of sectors in the disk image.
 func (md MappedDisk) Sectors() byte {
 	return md.sectorDisk.Sectors()
 }
 
-// Tracks returns the number of tracks on the DSK image.
+// Tracks returns the number of tracks in the disk image.
 func (md MappedDisk) Tracks() byte {
 	return md.sectorDisk.Tracks()
 }
 
-const (
-	DOS33Tracks  = 35 // Tracks per disk
-	DOS33Sectors = 16 // Sectors per track
-	// DOS33DiskBytes is the number of bytes on a DOS 3.3 disk.
-	DOS33DiskBytes  = 143360             // 35 tracks * 16 sectors * 256 bytes
-	DOS33TrackBytes = 256 * DOS33Sectors // Bytes per track
-)
-
-// DSK represents a .dsk disk image.
-type DSK struct {
-	data             []byte // The actual data in the file
-	sectors          byte   // Number of sectors per track
-	physicalToStored []byte // Map of physical on-disk sector numbers to sectors in the disk image
-	bytesPerTrack    int    // Number of bytes per track
-	tracks           byte   // Number of tracks
-}
-
-var _ SectorDisk = (*DSK)(nil)
-
-// LoadDSK loads a .dsk image from a file.
-func LoadDSK(filename string) (DSK, error) {
-	bb, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return DSK{}, err
+// Open opens a disk image by filename.
+func Open(filename string) (SectorDisk, error) {
+	ext := strings.ToLower(path.Ext(filename))
+	switch ext {
+	case ".dsk":
+		return LoadDSK(filename)
 	}
-	// TODO(zellyn): handle 13-sector disks.
-	if len(bb) != DOS33DiskBytes {
-		return DSK{}, fmt.Errorf("Expected file %q to contain %d bytes, but got %d.", filename, DOS33DiskBytes, len(bb))
-	}
-	return DSK{
-		data:             bb,
-		sectors:          16,
-		physicalToStored: Dos33PhysicalToLogicalSectorMap,
-		bytesPerTrack:    16 * 256,
-		tracks:           DOS33Tracks,
-	}, nil
-}
-
-// ReadPhysicalSector reads a single physical sector from the disk. It
-// always returns 256 byes.
-func (d DSK) ReadPhysicalSector(track byte, sector byte) ([]byte, error) {
-	if track >= d.tracks {
-		return nil, fmt.Errorf("ReadPhysicalSector expected track between 0 and %d; got %d", d.tracks-1, track)
-	}
-	if sector >= d.sectors {
-		return nil, fmt.Errorf("ReadPhysicalSector expected sector between 0 and %d; got %d", d.sectors-1, sector)
-	}
-
-	storedSector := d.physicalToStored[int(sector)]
-	start := int(track)*d.bytesPerTrack + 256*int(storedSector)
-	buf := make([]byte, 256)
-	copy(buf, d.data[start:start+256])
-	return buf, nil
-}
-
-// WritePhysicalSector writes a single physical sector to a disk. It
-// expects exactly 256 bytes.
-func (d DSK) WritePhysicalSector(track byte, sector byte, data []byte) error {
-	if track >= d.tracks {
-		return fmt.Errorf("WritePhysicalSector expected track between 0 and %d; got %d", d.tracks-1, track)
-	}
-	if sector >= d.sectors {
-		return fmt.Errorf("WritePhysicalSector expected sector between 0 and %d; got %d", d.sectors-1, sector)
-	}
-	if len(data) != 256 {
-		return fmt.Errorf("WritePhysicalSector expects data of length 256; got %d", len(data))
-	}
-
-	storedSector := d.physicalToStored[int(sector)]
-	start := int(track)*d.bytesPerTrack + 256*int(storedSector)
-	copy(d.data[start:start+256], data)
-	return nil
-}
-
-// Sectors returns the number of sectors on the DSK image.
-func (d DSK) Sectors() byte {
-	return d.sectors
-}
-
-// Tracks returns the number of tracks on the DSK image.
-func (d DSK) Tracks() byte {
-	return d.tracks
+	return nil, fmt.Errorf("Unimplemented/unknown disk file extension %q", ext)
 }

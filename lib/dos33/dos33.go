@@ -454,3 +454,63 @@ func ReadCatalog(d disk.LogicalSectorDisk) (files, deleted []FileDesc, err error
 	}
 	return files, deleted, nil
 }
+
+// operator is a disk.Operator - an interface for performing
+// high-level operations on files and directories.
+type operator struct {
+	lsd disk.LogicalSectorDisk
+}
+
+var _ disk.Operator = operator{}
+
+// operatorName is the keyword name for the operator that undestands
+// dos33 disks.
+const operatorName = "dos33"
+
+// Name returns the name of the operator.
+func (o operator) Name() string {
+	return operatorName
+}
+
+// HasSubdirs returns true if the underlying operating system on the
+// disk allows subdirectories.
+func (o operator) HasSubdirs() bool {
+	return false
+}
+
+// Catalog returns a catalog of disk entries. subdir should be empty
+// for operating systems that do not support subdirectories.
+func (o operator) Catalog(subdir string) ([]disk.Descriptor, error) {
+	fds, _, err := ReadCatalog(o.lsd)
+	if err != nil {
+		return nil, err
+	}
+	descs := make([]disk.Descriptor, 0, len(fds))
+	for _, fd := range fds {
+		descs = append(descs, disk.Descriptor{
+			Name:    fd.FilenameString(),
+			Sectors: int(fd.SectorCount),
+			Length:  -1, // TODO(zellyn): read actual file length
+			Locked:  (fd.Filetype & FiletypeLocked) > 0,
+		})
+	}
+	return descs, nil
+}
+
+// operatorFactory is the factory that returns dos33 operators given
+// disk images.
+func operatorFactory(sd disk.SectorDisk) (disk.Operator, error) {
+	lsd, err := disk.NewMappedDisk(sd, disk.Dos33LogicalToPhysicalSectorMap)
+	if err != nil {
+		return nil, err
+	}
+	_, _, err = ReadCatalog(lsd)
+	if err != nil {
+		return nil, fmt.Errorf("Cannot read catalog. Underlying error: %v", err)
+	}
+	return operator{lsd: lsd}, nil
+}
+
+func init() {
+	disk.RegisterOperatorFactory(operatorName, operatorFactory)
+}

@@ -32,6 +32,19 @@ decode -        # read stdin`,
 	},
 }
 
+func init() {
+	applesoftCmd.AddCommand(decodeCmd)
+
+	// Here you will define your flags and configuration settings.
+
+	// Cobra supports Persistent Flags which will work for this command
+	// and all subcommands, e.g.:
+	// decodeCmd.PersistentFlags().String("foo", "", "A help for foo")
+
+	decodeCmd.Flags().Uint16VarP(&location, "location", "l", 0x801, "Starting program location in memory")
+	decodeCmd.Flags().BoolVarP(&rawControlCodes, "raw", "r", false, "Print raw control codes (no escaping)")
+}
+
 // runDecode performs the actual decode logic.
 func runDecode(args []string) error {
 	if len(args) != 1 {
@@ -51,17 +64,4 @@ func runDecode(args []string) error {
 		os.Stdout.WriteString(applesoft.ChevronControlCodes(listing.String()))
 	}
 	return nil
-}
-
-func init() {
-	applesoftCmd.AddCommand(decodeCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// decodeCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	decodeCmd.Flags().Uint16VarP(&location, "location", "l", 0x801, "Starting program location in memory")
-	decodeCmd.Flags().BoolVarP(&rawControlCodes, "raw", "r", false, "Print raw control codes (no escaping)")
 }

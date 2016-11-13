@@ -8,6 +8,7 @@ package supermon
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/zellyn/diskii/lib/disk"
 )
@@ -210,4 +211,89 @@ func (st SymbolTable) SymbolsByAddress() map[uint16][]Symbol {
 		}
 	}
 	return result
+}
+
+func FilenameString(file byte, symbols []Symbol) string {
+	if len(symbols) > 0 {
+		for _, symbol := range symbols {
+			if strings.HasPrefix(symbol.Name, "F") {
+				return symbol.Name
+			}
+		}
+		return symbols[0].Name
+	}
+	return fmt.Sprintf("%02X", file)
+}
+
+// operator is a disk.Operator - an interface for performing
+// high-level operations on files and directories.
+type operator struct {
+	sd      disk.SectorDisk
+	sm      SectorMap
+	st      SymbolTable
+	symbols map[uint16][]Symbol
+}
+
+var _ disk.Operator = operator{}
+
+// operatorName is the keyword name for the operator that undestands
+// NakedOS/Super-Mon disks.
+const operatorName = "nakedos"
+
+// Name returns the name of the operator.
+func (o operator) Name() string {
+	return operatorName
+}
+
+// HasSubdirs returns true if the underlying operating system on the
+// disk allows subdirectories.
+func (o operator) HasSubdirs() bool {
+	return false
+}
+
+// Catalog returns a catalog of disk entries. subdir should be empty
+// for operating systems that do not support subdirectories.
+func (o operator) Catalog(subdir string) ([]disk.Descriptor, error) {
+	var descs []disk.Descriptor
+	sectorsByFile := o.sm.SectorsByFile()
+	for file := byte(1); file < FileReserved; file++ {
+		l := len(sectorsByFile[file])
+		if l == 0 {
+			continue
+		}
+		fileAddr := uint16(0xDF00) + uint16(file)
+		descs = append(descs, disk.Descriptor{
+			Name:    FilenameString(file, o.symbols[fileAddr]),
+			Sectors: l,
+			Length:  l * 256,
+			Locked:  false,
+		})
+	}
+	return descs, nil
+}
+
+// operatorFactory is the factory that returns dos33 operators given
+// disk images.
+func operatorFactory(sd disk.SectorDisk) (disk.Operator, error) {
+	sm, err := LoadSectorMap(sd)
+	if err != nil {
+		return nil, err
+	}
+	if err := sm.Verify(); err != nil {
+		return nil, err
+	}
+
+	op := operator{sd: sd, sm: sm}
+
+	st, err := sm.ReadSymbolTable(sd)
+	if err == nil {
+		op.st = st
+		op.symbols = st.SymbolsByAddress()
+	}
+
+	return op, nil
+}
+
+func init() {
+	disk.RegisterOperatorFactory(operatorName, operatorFactory)
 }
