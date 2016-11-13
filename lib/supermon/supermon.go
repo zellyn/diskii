@@ -4,6 +4,8 @@
 // structures of NakedOS/Super-Mon disks.
 package supermon
 
+// TODO(zellyn): remove panics.
+
 import (
 	"fmt"
 

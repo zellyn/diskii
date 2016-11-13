@@ -124,7 +124,7 @@ func (v *VTOC) Validate() error {
 }
 
 // ToSector marshals the VTOC sector to bytes.
-func (v VTOC) ToSector() []byte {
+func (v VTOC) ToSector() ([]byte, error) {
 	buf := make([]byte, 256)
 	buf[0x00] = v.Unused1
 	buf[0x01] = v.CatalogTrack
@@ -144,7 +144,7 @@ func (v VTOC) ToSector() []byte {
 	for i, m := range v.FreeSectors {
 		copyBytes(buf[0x38+4*i:0x38+4*i+4], m[:])
 	}
-	return buf
+	return buf, nil
 }
 
 // copyBytes is just like the builtin copy, but just for byte slices,
@@ -158,9 +158,9 @@ func copyBytes(dst, src []byte) int {
 
 // FromSector unmarshals the VTOC sector from bytes. Input is
 // expected to be exactly 256 bytes.
-func (v *VTOC) FromSector(data []byte) {
+func (v *VTOC) FromSector(data []byte) error {
 	if len(data) != 256 {
-		panic(fmt.Sprintf("VTOC.FromSector expects exactly 256 bytes; got %d", len(data)))
+		return fmt.Errorf("VTOC.FromSector expects exactly 256 bytes; got %d", len(data))
 	}
 
 	v.Unused1 = data[0x00]
@@ -181,6 +181,7 @@ func (v *VTOC) FromSector(data []byte) {
 	for i := range v.FreeSectors {
 		copyBytes(v.FreeSectors[i][:], data[0x38+4*i:0x38+4*i+4])
 	}
+	return nil
 }
 
 func DefaultVTOC() VTOC {
@@ -217,7 +218,7 @@ type CatalogSector struct {
 }
 
 // ToSector marshals the CatalogSector to bytes.
-func (cs CatalogSector) ToSector() []byte {
+func (cs CatalogSector) ToSector() ([]byte, error) {
 	buf := make([]byte, 256)
 	buf[0x00] = cs.Unused1
 	buf[0x01] = cs.NextTrack
@@ -227,14 +228,14 @@ func (cs CatalogSector) ToSector() []byte {
 		fdBytes := fd.ToBytes()
 		copyBytes(buf[0x0b+35*i:0x0b+35*(i+1)], fdBytes)
 	}
-	return buf
+	return buf, nil
 }
 
 // FromSector unmarshals the CatalogSector from bytes. Input is
 // expected to be exactly 256 bytes.
-func (cs *CatalogSector) FromSector(data []byte) {
+func (cs *CatalogSector) FromSector(data []byte) error {
 	if len(data) != 256 {
-		panic(fmt.Sprintf("CatalogSector.FromSector expects exactly 256 bytes; got %d", len(data)))
+		return fmt.Errorf("CatalogSector.FromSector expects exactly 256 bytes; got %d", len(data))
 	}
 
 	cs.Unused1 = data[0x00]
@@ -245,6 +246,7 @@ func (cs *CatalogSector) FromSector(data []byte) {
 	for i := range cs.FileDescs {
 		cs.FileDescs[i].FromBytes(data[0x0b+35*i : 0x0b+35*(i+1)])
 	}
+	return nil
 }
 
 type Filetype byte
@@ -360,7 +362,7 @@ type TrackSectorList struct {
 }
 
 // ToSector marshals the TrackSectorList to bytes.
-func (tsl TrackSectorList) ToSector() []byte {
+func (tsl TrackSectorList) ToSector() ([]byte, error) {
 	buf := make([]byte, 256)
 	buf[0x00] = tsl.Unused1
 	buf[0x01] = tsl.NextTrack
@@ -373,14 +375,14 @@ func (tsl TrackSectorList) ToSector() []byte {
 		buf[0x0C+i*2] = ts.Track
 		buf[0x0D+i*2] = ts.Sector
 	}
-	return buf
+	return buf, nil
 }
 
 // FromSector unmarshals the TrackSectorList from bytes. Input is
 // expected to be exactly 256 bytes.
-func (tsl *TrackSectorList) FromSector(data []byte) {
+func (tsl *TrackSectorList) FromSector(data []byte) error {
 	if len(data) != 256 {
-		panic(fmt.Sprintf("TrackSectorList.FromSector expects exactly 256 bytes; got %d", len(data)))
+		return fmt.Errorf("TrackSectorList.FromSector expects exactly 256 bytes; got %d", len(data))
 	}
 
 	tsl.Unused1 = data[0x00]
@@ -394,6 +396,7 @@ func (tsl *TrackSectorList) FromSector(data []byte) {
 		tsl.TrackSectors[i].Track = data[0x0C+i*2]
 		tsl.TrackSectors[i].Sector = data[0x0D+i*2]
 	}
+	return nil
 }
 
 // readCatalogSectors reads the raw CatalogSector structs from a DOS

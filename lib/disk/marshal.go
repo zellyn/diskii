@@ -8,7 +8,7 @@ package disk
 // SectorSource is the interface for types that can marshal to sectors.
 type SectorSource interface {
 	// ToSector marshals the sector struct to exactly 256 bytes.
-	ToSector() []byte
+	ToSector() ([]byte, error)
 	// GetTrack returns the track that a sector struct was loaded from.
 	GetTrack() byte
 	// GetSector returns the sector that a sector struct was loaded from.
@@ -19,7 +19,7 @@ type SectorSource interface {
 type SectorSink interface {
 	// FromSector unmarshals the sector struct from bytes. Input is
 	// expected to be exactly 256 bytes.
-	FromSector(data []byte)
+	FromSector(data []byte) error
 	// SetTrack sets the track that a sector struct was loaded from.
 	SetTrack(track byte)
 	// SetSector sets the sector that a sector struct was loaded from.
@@ -33,7 +33,9 @@ func UnmarshalLogicalSector(d LogicalSectorDisk, ss SectorSink, track, sector by
 	if err != nil {
 		return err
 	}
-	ss.FromSector(bytes)
+	if err := ss.FromSector(bytes); err != nil {
+		return err
+	}
 	ss.SetTrack(track)
 	ss.SetSector(sector)
 	return nil
@@ -44,6 +46,9 @@ func UnmarshalLogicalSector(d LogicalSectorDisk, ss SectorSink, track, sector by
 func MarshalLogicalSector(d LogicalSectorDisk, ss SectorSource) error {
 	track := ss.GetTrack()
 	sector := ss.GetSector()
-	bytes := ss.ToSector()
+	bytes, err := ss.ToSector()
+	if err != nil {
+		return err
+	}
 	return d.WriteLogicalSector(track, sector, bytes)
 }

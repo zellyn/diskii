@@ -16,7 +16,10 @@ func TestVTOCMarshalRoundtrip(t *testing.T) {
 	copy(buf1, buf)
 	vtoc1 := &VTOC{}
 	vtoc1.FromSector(buf1)
-	buf2 := vtoc1.ToSector()
+	buf2, err := vtoc1.ToSector()
+	if err != nil {
+		t.Fatal(err)
+	}
 	if !reflect.DeepEqual(buf, buf2) {
 		t.Errorf("Buffers differ: %v != %v", buf, buf2)
 	}
@@ -35,7 +38,10 @@ func TestCatalogSectorMarshalRoundtrip(t *testing.T) {
 	copy(buf1, buf)
 	cs1 := &CatalogSector{}
 	cs1.FromSector(buf1)
-	buf2 := cs1.ToSector()
+	buf2, err := cs1.ToSector()
+	if err != nil {
+		t.Fatal(err)
+	}
 	if !reflect.DeepEqual(buf, buf2) {
 		t.Errorf("Buffers differ: %v != %v", buf, buf2)
 	}
@@ -54,7 +60,10 @@ func TestTrackSectorListMarshalRoundtrip(t *testing.T) {
 	copy(buf1, buf)
 	cs1 := &TrackSectorList{}
 	cs1.FromSector(buf1)
-	buf2 := cs1.ToSector()
+	buf2, err := cs1.ToSector()
+	if err != nil {
+		t.Fatal(err)
+	}
 	if !reflect.DeepEqual(buf, buf2) {
 		t.Errorf("Buffers differ: %v != %v", buf, buf2)
 	}
