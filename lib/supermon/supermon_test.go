@@ -9,24 +9,23 @@ import (
 )
 
 // loadSectorMap loads a sector map for the disk image contained in
-// filename.
-func loadSectorMap(filename string) (SectorMap, error) {
-	dsk, err := disk.LoadDSK(filename)
+// filename. It returns the sector map and a sector disk.
+func loadSectorMap(filename string) (SectorMap, disk.SectorDisk, error) {
+	sd, err := disk.LoadDSK(filename)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	sd := SectorDiskShim{Dos33: dsk}
 	sm, err := LoadSectorMap(sd)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return sm, nil
+	return sm, sd, nil
 }
 
 // TestReadSectorMap tests the reading of the sector map of a test
 // disk.
 func TestReadSectorMap(t *testing.T) {
-	sm, err := loadSectorMap("testdata/chacha20.dsk")
+	sm, _, err := loadSectorMap("testdata/chacha20.dsk")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,6 +54,52 @@ func TestReadSectorMap(t *testing.T) {
 		sectors := sectorsByFile[tt.file]
 		if len(sectors) != tt.length {
 			t.Errorf("Want %q to be %d sectors long; got %d", tt.name, tt.length, len(sectors))
+		}
+	}
+}
+
+// TestReadSymbolTable tests the reading of the symbol table of a test
+// disk.
+func TestReadSymbolTable(t *testing.T) {
+	sm, sd, err := loadSectorMap("testdata/chacha20.dsk")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := sm.Verify(); err != nil {
+		t.Fatal(err)
+	}
+
+	st, err := sm.ReadSymbolTable(sd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	symbols := st.SymbolsByAddress()
+
+	testData := []struct {
+		file uint16
+		name string
+	}{
+		{1, "FHELLO"},
+		{2, "FSUPERMON"},
+		{3, "FSYMTBL1"},
+		{4, "FSYMTBL2"},
+		{5, "FMONHELP"},
+		{6, "FSHORTSUP"},
+		{7, "FSHRTHELP"},
+		{8, "FSHORT"},
+		{9, "FCHACHA"},
+	}
+
+	for _, tt := range testData {
+		fileAddr := uint16(0xDF00) + tt.file
+		syms := symbols[fileAddr]
+		if len(syms) != 1 {
+			t.Errorf("Expected one symbol for address %04X (file %q), but got %d.", fileAddr, tt.file, len(syms))
+			continue
+		}
+		if syms[0].Name != tt.name {
+			t.Errorf("Expected symbol name for address %04X to be %q, but got %q.", fileAddr, tt.name, syms[0].Name)
+			continue
 		}
 	}
 }

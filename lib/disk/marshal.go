@@ -28,7 +28,7 @@ type SectorSink interface {
 
 // UnmarshalLogicalSector reads a sector from a SectorDisk, and
 // unmarshals it into a SectorSink, setting its track and sector.
-func UnmarshalLogicalSector(d SectorDisk, ss SectorSink, track, sector byte) error {
+func UnmarshalLogicalSector(d LogicalSectorDisk, ss SectorSink, track, sector byte) error {
 	bytes, err := d.ReadLogicalSector(track, sector)
 	if err != nil {
 		return err
@@ -41,7 +41,7 @@ func UnmarshalLogicalSector(d SectorDisk, ss SectorSink, track, sector byte) err
 
 // MarshalLogicalSector marshals a SectorSource to its sector on a
 // SectorDisk.
-func MarshalLogicalSector(d SectorDisk, ss SectorSource) error {
+func MarshalLogicalSector(d LogicalSectorDisk, ss SectorSource) error {
 	track := ss.GetTrack()
 	sector := ss.GetSector()
 	bytes := ss.ToSector()

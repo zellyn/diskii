@@ -398,7 +398,7 @@ func (tsl *TrackSectorList) FromSector(data []byte) {
 
 // readCatalogSectors reads the raw CatalogSector structs from a DOS
 // 3.3 disk.
-func readCatalogSectors(d disk.SectorDisk) ([]CatalogSector, error) {
+func readCatalogSectors(d disk.LogicalSectorDisk) ([]CatalogSector, error) {
 	v := &VTOC{}
 	err := disk.UnmarshalLogicalSector(d, v, VTOCTrack, VTOCSector)
 	if err != nil {
@@ -431,7 +431,7 @@ func readCatalogSectors(d disk.SectorDisk) ([]CatalogSector, error) {
 }
 
 // ReadCatalog reads the catalog of a DOS 3.3 disk.
-func ReadCatalog(d disk.SectorDisk) (files, deleted []FileDesc, err error) {
+func ReadCatalog(d disk.LogicalSectorDisk) (files, deleted []FileDesc, err error) {
 	css, err := readCatalogSectors(d)
 	if err != nil {
 		return nil, nil, err

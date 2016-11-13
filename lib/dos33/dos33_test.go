@@ -67,7 +67,11 @@ func TestTrackSectorListMarshalRoundtrip(t *testing.T) {
 
 // TestReadCatalog tests the reading of the catalog of a test disk.
 func TestReadCatalog(t *testing.T) {
-	dsk, err := disk.LoadDSK("testdata/dos33test.dsk")
+	sd, err := disk.LoadDSK("testdata/dos33test.dsk")
+	if err != nil {
+		t.Fatal(err)
+	}
+	dsk, err := disk.NewMappedDisk(sd, disk.Dos33LogicalToPhysicalSectorMap)
 	if err != nil {
 		t.Fatal(err)
 	}
