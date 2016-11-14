@@ -15,6 +15,6 @@ deploy:
     tags: true
 after_success:
   - mkdir -p release
-  - GOOS=linux GOARCH=amd64 go build -o release/diskii-linux-amd64 $(package)
-  - GOOS=darwin GOARCH=amd64 go build -o release/diskii-macos-amd64 $(package)
-  - GOOS=windows GOARCH=amd64 go build -o release/diskii-windows-amd64.exe $(package)
+  - GOOS=linux GOARCH=amd64 go build -o release/diskii-linux-amd64
+  - GOOS=darwin GOARCH=amd64 go build -o release/diskii-macos-amd64
+  - GOOS=windows GOARCH=amd64 go build -o release/diskii-windows-amd64.exe
