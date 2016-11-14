@@ -9,6 +9,12 @@ deploy:
   - release/diskii-linux-amd64
   - release/diskii-macos-amd64
   - release/diskii-windows-amd64.exe
+  skip_cleanup: true
   on:
     repo: zellyn/diskii
     tags: true
+after_success:
+  - mkdir -p release
+  - GOOS=linux GOARCH=amd64 go build -o release/diskii-linux-amd64 $(package)
+  - GOOS=darwin GOARCH=amd64 go build -o release/diskii-macos-amd64 $(package)
+  - GOOS=windows GOARCH=amd64 go build -o release/diskii-windows-amd64.exe $(package)
