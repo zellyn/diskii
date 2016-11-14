@@ -1,4 +1,14 @@
 language: go
-
 go:
-  - 1.7
+- 1.7
+deploy:
+  provider: releases
+  api_key:
+    secure: I9FCgIU367GQ16uqK0+qpE1QrR857RMFUt+sRjoZ0ULkSAfTZsRHyjDYWKp0NF6d1+CRsJZGVOdTXckDpJc2nRHownMCiG8lnQtz3hd4BZ+5tDQwjtjBEic/tyVdcnlaxTF/ZjB6LdUsB9veSwOvSfv/LulkUOfwYHdFypXh7c79ARYV9Y9UH1YE3DmklzIhosAywXKyn1cjKrYuFDXUxv53QhMPKnEHYwjM8VFTubuxX95B2nYDSfs8PFStnOGCAS/kKINPfQbWLO4v8mimBGebRtwicnYky8MlqwxB08EmnWNvpt/0rhc0oudm44RwxrBO2oJ28DHhiM+qzWCOBWgHrQmVtZBUBLxoVcpjpKzEfP/ZNz10yCbWhDHJqB6xV+i7wu4I+2N/uIB9YaMd3cL+WTLo4kwUiAhNgJysCA40qySvZ0ik08zFgRbjy48TAjcqH0QuK4Gjv5ORqG59Ga/NVyPwsLJgMTUiu3xb7iKPYX9wyjPttWV5/dmwLlT7FVlHRuWGODviGtMELyCdaIO6LpLgAK3cMfddD3HKAeaDmrocT7GempXZEgO4v3aVXz0EMuBCIuwfnUcBRBug6k+WZzHk/SU+7EocpJv+RXVAzbJHM4d/jmP3ma+84dk/NU6LGpDbbuyMZjTElvm51zXhDoEuftMlrLwp59NLcCw=
+  file:
+  - release/diskii-linux-amd64
+  - release/diskii-macos-amd64
+  - release/diskii-windows-amd64.exe
+  on:
+    repo: zellyn/diskii
+    tags: true
