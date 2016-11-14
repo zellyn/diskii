@@ -10,9 +10,7 @@ diskii is a commandline tool for working with Apple II disk images.
 It is also a library of code that can be used by other Go programs.
 
 Its major advantage is that it's written in Go, hence
-cross-platform. (Travis is currently set up to build for Linux, MacOS,
-and Windows, for amd64 architecture. Send a pull request if you want
-to add a platform.)
+cross-platform.
 
 Its major disadvantage is that it mostly doesn't exist yet.
 
@@ -31,13 +29,24 @@ tool, but for now only the `applesoft decode` command works.
 
 The library code aims (a) to support the commandline tool operations, and (b) to replace the "read and write disk images" code of the [goapple2 emulator](https://github.com/zellyn/goapple2).
 
+Current disk operations supported:
+
+| Feature       | DOS 3.3            | NakedOS/Super-Mon  |
+| ------------- | ------------------ | ------------------ |
+| catalog       | :white_check_mark: | :white_check_mark: |
 
 ### Installing/updating
 Assuming you have Go installed, run `go get -u github.com/zellyn/diskii`
 
+You can also download automatically-built binaries from the
+[latest release
+page](https://github.com/zellyn/diskii/releases/latest). If you
+need binaries for a different architecture, please send a pull
+request or open an issue.
+
 ### Short-term TODOs/roadmap
 
-- [ ] Build per-platform binaries for Linux, MacOS, Windows
+- [x] Build per-platform binaries for Linux, MacOS, Windows
 - [ ] Implement CATALOG, deletion, and creation of files in DOS 3.3 images
 
 ### Related tools
