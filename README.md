@@ -9,7 +9,10 @@ diskii is a commandline tool for working with Apple II disk images.
 
 It is also a library of code that can be used by other Go programs.
 
-Its major advantage is that it's written in Go, hence cross-platform.
+Its major advantage is that it's written in Go, hence
+cross-platform. (Travis is currently set up to build for Linux, MacOS,
+and Windows, for amd64 architecture. Send a pull request if you want
+to add a platform.)
 
 Its major disadvantage is that it mostly doesn't exist yet.
 
