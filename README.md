@@ -27,7 +27,9 @@ Discussion/support is in
 Eventually, it aims to be a comprehensive disk image manipulation
 tool, but for now only the `applesoft decode` command works.
 
-The library code aims (a) to support the commandline tool operations, and (b) to replace the "read and write disk images" code of the [goapple2 emulator](https://github.com/zellyn/goapple2).
+The library code aims (a) to support the commandline tool operations,
+and (b) to replace the "read and write disk images" code of the
+[goapple2 emulator](https://github.com/zellyn/goapple2).
 
 Current disk operations supported:
 
@@ -46,8 +48,8 @@ request or open an issue.
 
 ### Short-term TODOs/roadmap
 
-- [x] Build per-platform binaries for Linux, MacOS, Windows
-- [ ] Implement CATALOG, deletion, and creation of files in DOS 3.3 images
+- [x] Build per-platform binaries for Linux, MacOS, Windows.
+- [ ] Implement CATALOG, deletion, and creation of files in DOS 3.3 images.
 
 ### Related tools
 

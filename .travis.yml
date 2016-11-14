@@ -14,8 +14,11 @@ deploy:
     repo: zellyn/diskii
     tags: true
 after_success:
-  - go get github.com/inconshreveable/mousetrap
-  - mkdir -p release
-  - GOOS=linux GOARCH=amd64 go build -o release/diskii-linux-amd64
-  - GOOS=darwin GOARCH=amd64 go build -o release/diskii-macos-amd64
-  - GOOS=windows GOARCH=amd64 go build -o release/diskii-windows-amd64.exe
+  # Cross-compile tagged releases.
+  if ([ "$TRAVIS_BRANCH" == "master" ] || [ ! -z "$TRAVIS_TAG" ]) && [ "$TRAVIS_PULL_REQUEST" == "false" ]; then
+    go get github.com/inconshreveable/mousetrap
+    mkdir -p release
+    GOOS=linux GOARCH=amd64 go build -o release/diskii-linux-amd64
+    GOOS=darwin GOARCH=amd64 go build -o release/diskii-macos-amd64
+    GOOS=windows GOARCH=amd64 go build -o release/diskii-windows-amd64.exe
+  fi
