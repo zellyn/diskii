@@ -15,7 +15,8 @@ deploy:
     tags: true
 after_success:
   # Cross-compile tagged releases.
-  if ([ "$TRAVIS_BRANCH" == "master" ] || [ ! -z "$TRAVIS_TAG" ]) && [ "$TRAVIS_PULL_REQUEST" == "false" ]; then
+  if [ ! -z "$TRAVIS_TAG" ]; then
+    echo 'Cross-compiling';
     go get github.com/inconshreveable/mousetrap;
     mkdir -p release;
     GOOS=linux GOARCH=amd64 go build -o release/diskii-linux-amd64;
