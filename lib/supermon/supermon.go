@@ -8,6 +8,7 @@ package supermon
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/zellyn/diskii/lib/disk"
@@ -67,13 +68,14 @@ func (sm SectorMap) Verify() error {
 	return nil
 }
 
-// FileForSector returns the file that owns the given track/sector.
+// FileForSector returns the file that owns the given track/sector, or
+// zero if the track or sector is too high.
 func (sm SectorMap) FileForSector(track, sector byte) byte {
 	if track >= 35 {
-		panic(fmt.Sprintf("FileForSector called with track=%d > 34", track))
+		return FileIllegal
 	}
 	if sector >= 16 {
-		panic(fmt.Sprintf("FileForSector called with sector=%d > 15", sector))
+		return FileIllegal
 	}
 	return sm[int(track)*16+int(sector)]
 }
@@ -105,16 +107,16 @@ func (sm SectorMap) SectorsByFile() map[byte][]disk.TrackSector {
 }
 
 // ReadFile reads the contents of a file.
-func (sm SectorMap) ReadFile(sd disk.SectorDisk, file byte) []byte {
+func (sm SectorMap) ReadFile(sd disk.SectorDisk, file byte) ([]byte, error) {
 	var result []byte
 	for _, ts := range sm.SectorsForFile(file) {
 		bytes, err := sd.ReadPhysicalSector(ts.Track, ts.Sector)
 		if err != nil {
-			panic(err.Error())
+			return nil, err
 		}
 		result = append(result, bytes...)
 	}
-	return result
+	return result, nil
 }
 
 // Symbol represents a single Super-Mon symbol.
@@ -159,11 +161,17 @@ type SymbolTable []Symbol
 // pointers are problematic), it'll return nil and an error.
 func (sm SectorMap) ReadSymbolTable(sd disk.SectorDisk) (SymbolTable, error) {
 	table := make(SymbolTable, 0, 819)
-	symtbl1 := sm.ReadFile(sd, 3)
+	symtbl1, err := sm.ReadFile(sd, 3)
+	if err != nil {
+		return nil, err
+	}
 	if len(symtbl1) != 0x1000 {
 		return nil, fmt.Errorf("expected file FSYMTBL1(0x3) to be 0x1000 bytes long; got 0x%04X", len(symtbl1))
 	}
-	symtbl2 := sm.ReadFile(sd, 4)
+	symtbl2, err := sm.ReadFile(sd, 4)
+	if err != nil {
+		return nil, err
+	}
 	if len(symtbl2) != 0x1000 {
 		return nil, fmt.Errorf("expected file FSYMTBL1(0x4) to be 0x1000 bytes long; got 0x%04X", len(symtbl2))
 	}
@@ -213,16 +221,35 @@ func (st SymbolTable) SymbolsByAddress() map[uint16][]Symbol {
 	return result
 }
 
-func FilenameString(file byte, symbols []Symbol) string {
+// NameForFile returns a string representation of a filename:
+// either DFxx, or a symbol, if one exists for that value.
+func NameForFile(file byte, symbols []Symbol) string {
 	if len(symbols) > 0 {
-		for _, symbol := range symbols {
-			if strings.HasPrefix(symbol.Name, "F") {
-				return symbol.Name
-			}
-		}
 		return symbols[0].Name
 	}
-	return fmt.Sprintf("%02X", file)
+	return fmt.Sprintf("DF%02X", file)
+}
+
+// FileForName returns a byte file number for a representation of a
+// filename: either DFxx, or a symbol, if one exists with the given
+// name and points to a DFxx address.
+func (st SymbolTable) FileForName(filename string) (byte, error) {
+	if addr, err := strconv.ParseUint(filename, 16, 16); err == nil {
+		if addr > 0xDF00 && addr < 0xDFFE {
+			return byte(addr - 0xDF00), nil
+		}
+	}
+
+	for _, symbol := range st {
+		if strings.EqualFold(symbol.Name, filename) {
+			if symbol.Address > 0xDF00 && symbol.Address < 0xDFFE {
+				return byte(symbol.Address - 0xDF00), nil
+			}
+			break
+		}
+	}
+
+	return 0, fmt.Errorf("invalid filename: %q", filename)
 }
 
 // operator is a disk.Operator - an interface for performing
@@ -261,15 +288,40 @@ func (o operator) Catalog(subdir string) ([]disk.Descriptor, error) {
 		if l == 0 {
 			continue
 		}
-		fileAddr := uint16(0xDF00) + uint16(file)
+		fileAddr := 0xDF00 + uint16(file)
 		descs = append(descs, disk.Descriptor{
-			Name:    FilenameString(file, o.symbols[fileAddr]),
+			Name:    NameForFile(file, o.symbols[fileAddr]),
 			Sectors: l,
 			Length:  l * 256,
 			Locked:  false,
 		})
 	}
 	return descs, nil
+}
+
+// GetFile retrieves a file by name.
+func (o operator) GetFile(filename string) (disk.FileInfo, error) {
+	file, err := o.st.FileForName(filename)
+	if err != nil {
+		return disk.FileInfo{}, err
+	}
+	data, err := o.sm.ReadFile(o.sd, file)
+	if err != nil {
+		return disk.FileInfo{}, fmt.Errorf("error reading file DF%02x: %v", file, err)
+	}
+	if len(data) == 0 {
+		return disk.FileInfo{}, fmt.Errorf("file DF%02x not fount", file)
+	}
+	desc := disk.Descriptor{
+		Name:    NameForFile(file, o.symbols[0xDF00+uint16(file)]),
+		Sectors: len(data) / 256,
+		Length:  len(data),
+		Locked:  false,
+	}
+	return disk.FileInfo{
+		Descriptor: desc,
+		Data:       data,
+	}, nil
 }
 
 // operatorFactory is the factory that returns dos33 operators given

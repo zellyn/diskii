@@ -12,12 +12,13 @@ import (
 	_ "github.com/zellyn/diskii/lib/supermon"
 )
 
-// catCmd represents the cat command, used to catalog a disk or
+// catalogCmd represents the cat command, used to catalog a disk or
 // directory.
-var catCmd = &cobra.Command{
-	Use:   "cat",
-	Short: "print a list of files",
-	Long:  `Catalog a disk or subdirectory.`,
+var catalogCmd = &cobra.Command{
+	Use:     "catalog",
+	Aliases: []string{"cat", "ls"},
+	Short:   "print a list of files",
+	Long:    `Catalog a disk or subdirectory.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if err := runCat(args); err != nil {
 			fmt.Fprintln(os.Stderr, err.Error())
@@ -27,7 +28,7 @@ var catCmd = &cobra.Command{
 }
 
 func init() {
-	RootCmd.AddCommand(catCmd)
+	RootCmd.AddCommand(catalogCmd)
 }
 
 // runCat performs the actual catalog logic.

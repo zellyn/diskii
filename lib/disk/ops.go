@@ -31,6 +31,14 @@ type Operator interface {
 	// Catalog returns a catalog of disk entries. subdir should be empty
 	// for operating systems that do not support subdirectories.
 	Catalog(subdir string) ([]Descriptor, error)
+	// GetFile retrieves a file by name.
+	GetFile(filename string) (FileInfo, error)
+}
+
+// FileInfo represents a file descriptor plus the content.
+type FileInfo struct {
+	Descriptor Descriptor
+	Data       []byte
 }
 
 // operatorFactory is the type of functions that accept a SectorDisk,

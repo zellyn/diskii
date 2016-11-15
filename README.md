@@ -35,7 +35,8 @@ Current disk operations supported:
 
 | Feature       | DOS 3.3            | NakedOS/Super-Mon  |
 | ------------- | ------------------ | ------------------ |
-| catalog       | :white_check_mark: | :white_check_mark: |
+| ls            | :white_check_mark: | :white_check_mark: |
+| dump          | :x:                | :white_check_mark: |
 
 ### Installing/updating
 Assuming you have Go installed, run `go get -u github.com/zellyn/diskii`

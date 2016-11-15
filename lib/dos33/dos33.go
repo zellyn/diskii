@@ -497,6 +497,12 @@ func (o operator) Catalog(subdir string) ([]disk.Descriptor, error) {
 	return descs, nil
 }
 
+// GetFile retrieves a file by name.
+func (o operator) GetFile(filename string) (disk.FileInfo, error) {
+	// TODO(zellyn): Implement GetFile
+	return disk.FileInfo{}, fmt.Errorf("%s does not yet implement `GetFile`", operatorName)
+}
+
 // operatorFactory is the factory that returns dos33 operators given
 // disk images.
 func operatorFactory(sd disk.SectorDisk) (disk.Operator, error) {
