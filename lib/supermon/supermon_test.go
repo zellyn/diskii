@@ -47,6 +47,7 @@ func TestReadSectorMap(t *testing.T) {
 		{7, 0x1F, "FSHRTHELP"},
 		{8, 0x04, "FSHORT"},
 		{9, 0x60, "FCHACHA"},
+		{10, 0x01, "FTOBE"},
 	}
 
 	sectorsByFile := sm.SectorsByFile()
@@ -88,6 +89,7 @@ func TestReadSymbolTable(t *testing.T) {
 		{7, "FSHRTHELP"},
 		{8, "FSHORT"},
 		{9, "FCHACHA"},
+		{10, "FTOBE"},
 	}
 
 	for _, tt := range testData {
