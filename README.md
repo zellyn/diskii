@@ -47,10 +47,15 @@ page](https://github.com/zellyn/diskii/releases/latest). If you
 need binaries for a different architecture, please send a pull
 request or open an issue.
 
-### Short-term TODOs/roadmap
+### Short-term TODOs/roadmap/easy ways to contribute
 
 - [x] Build per-platform binaries for Linux, MacOS, Windows.
-- [ ] Implement CATALOG, deletion, and creation of files in DOS 3.3 images.
+- [ ] Implement `GetFile` for DOS 3.3
+- [ ] Add and implement the `-l` flag for `ls`
+- [ ] Add `Delete` to the `disk.Operator` interface
+  - [ ] Implement it for supermon
+  - [ ] Implement it for DOS 3.3
+- [ ] Add ProDOS support (add `lib/prodos/prodos.go` and register a ProDOS operator factory)
 
 ### Related tools
 
