@@ -8,6 +8,8 @@ import (
 	"github.com/zellyn/diskii/lib/disk"
 )
 
+const testDisk = "testdata/chacha20.dsk"
+
 // loadSectorMap loads a sector map for the disk image contained in
 // filename. It returns the sector map and a sector disk.
 func loadSectorMap(filename string) (SectorMap, disk.SectorDisk, error) {
@@ -25,7 +27,7 @@ func loadSectorMap(filename string) (SectorMap, disk.SectorDisk, error) {
 // TestReadSectorMap tests the reading of the sector map of a test
 // disk.
 func TestReadSectorMap(t *testing.T) {
-	sm, _, err := loadSectorMap("testdata/chacha20.dsk")
+	sm, _, err := loadSectorMap(testDisk)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,7 +64,7 @@ func TestReadSectorMap(t *testing.T) {
 // TestReadSymbolTable tests the reading of the symbol table of a test
 // disk.
 func TestReadSymbolTable(t *testing.T) {
-	sm, sd, err := loadSectorMap("testdata/chacha20.dsk")
+	sm, sd, err := loadSectorMap(testDisk)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,5 +105,35 @@ func TestReadSymbolTable(t *testing.T) {
 			t.Errorf("Expected symbol name for address %04X to be %q, but got %q.", fileAddr, tt.name, syms[0].Name)
 			continue
 		}
+	}
+}
+
+// TestGetFile tests the retrieval of a file's contents, using the
+// Operator interface.
+func TestGetFile(t *testing.T) {
+	sd, err := disk.Open(testDisk)
+	if err != nil {
+		t.Fatal(err)
+	}
+	op, err := disk.OperatorFor(sd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	file, err := op.GetFile("FTOBE")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := string(file.Data)
+	// The extra newline pads us to 256 bytes…
+	want := `To be, or not to be, that is the question:
+Whether 'tis Nobler in the mind to suffer
+The Slings and Arrows of outrageous Fortune,
+Or to take Arms against a Sea of troubles,
+And by opposing end them: to die, to sleep
+No more; and by a sleep, to say we end
+
+`
+	if got != want {
+		t.Errorf("Incorrect result for GetFile(\"TOBE\"): want %q; got %q", want, got)
 	}
 }

@@ -317,6 +317,7 @@ func (o operator) GetFile(filename string) (disk.FileInfo, error) {
 		Sectors: len(data) / 256,
 		Length:  len(data),
 		Locked:  false,
+		Type:    disk.FiletypeBinary,
 	}
 	return disk.FileInfo{
 		Descriptor: desc,
