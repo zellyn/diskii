@@ -38,6 +38,15 @@ Current disk operations supported:
 | basic structures | :white_check_mark: | :x:    | :white_check_mark: |
 | ls               | :white_check_mark: | :x:    | :white_check_mark: |
 | dump             | :x:                | :x:    | :white_check_mark: |
+| dumptext         | :x:                | :x:    | :x:                |
+| delete           | :x:                | :x:    | :x:                |
+| rename           | :x:                | :x:    | :x:                |
+| put              | :x:                | :x:    | :x:                |
+| puttext          | :x:                | :x:    | :x:                |
+| extract (all)    | :x:                | :x:    | :x:                |
+| lock/unlock      | :x:                | :x:    | :x:                |
+| init             | :x:                | :x:    | :x:                |
+| defrag           | :x:                | :x:    | :x:                |
 
 ### Installing/updating
 Assuming you have Go installed, run `go get -u github.com/zellyn/diskii`
@@ -50,12 +59,19 @@ request or open an issue.
 
 ### Short-term TODOs/roadmap/easy ways to contribute
 
+My rough TODO list (apart from anything marked (:x:) in the disk
+operations matrix is listed below. Anything that an actual user needs
+will be likely to get priority.
+
 - [x] Build per-platform binaries for Linux, MacOS, Windows.
 - [ ] Implement `GetFile` for DOS 3.3
 - [ ] Add and implement the `-l` flag for `ls`
 - [ ] Add `Delete` to the `disk.Operator` interface
   - [ ] Implement it for supermon
   - [ ] Implement it for DOS 3.3
+- [ ] Make 13-sector DOS disks work
+- [ ] Read/write nybble formats
+- [ ] Read/write gzipped files
 - [ ] Add ProDOS support (add `lib/prodos/prodos.go` and register a ProDOS operator factory)
 
 ### Related tools
