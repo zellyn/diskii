@@ -33,10 +33,11 @@ and (b) to replace the "read and write disk images" code of the
 
 Current disk operations supported:
 
-| Feature       | DOS 3.3            | NakedOS/Super-Mon  |
-| ------------- | ------------------ | ------------------ |
-| ls            | :white_check_mark: | :white_check_mark: |
-| dump          | :x:                | :white_check_mark: |
+| Feature          | DOS 3.3            | ProDOS | NakedOS/Super-Mon  |
+| ---------------- | ------------------ | ------ | ------------------ |
+| basic structures | :white_check_mark: | :x:    | :white_check_mark: |
+| ls               | :white_check_mark: | :x:    | :white_check_mark: |
+| dump             | :x:                | :x:    | :white_check_mark: |
 
 ### Installing/updating
 Assuming you have Go installed, run `go get -u github.com/zellyn/diskii`
