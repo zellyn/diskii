@@ -1,0 +1,57 @@
+** Program location
+Defaults to $801 for ROM-based Applesoft. Locations $67/$68 point to
+the start of the program, and the byte preceding it must be #0.
+
+Details:
+- http://www.atarimagazines.com/compute/issue11/36_1_THE_APPLE_GAZETTE_RESOLVING_APPLESOFT_AND_HIRES_GRAPHICS_MEMORY_CONFLICTS.php
+- http://retrocomputing.stackexchange.com/questions/1604
+
+** Format
+DOS stores an additional byte on the end, which should be ignored.
+** Parsing
+See PARSE.INPUT.LINE at
+http://www.txbobsc.com/scsc/scdocumentor/D52C.html
+
+"AT" is ambiguous: it could also be "ATN" or "A TO". Applesoft checks
+by seeing if the character directly after "AT" is "N" OR "O", and
+forcing a non-match with "AT" if so. Note that this doesn't skip
+blanks.
+
+Data statements and REM statements seem to leave characters completely
+intact (including storing the space, if any, after the "REM" or "DATA"
+keyword).
+** ProDOS and SOS File Types
+Beneath Apple ProDOS Table E.1
+
+| 00    |     | both   | Typeless file                        |
+| 01    |     | both   | Bad blocks file                      |
+| 02    |     | SOS    | PASCAL code file                     |
+| 03    |     | SOS    | PASCAL text file                     |
+| 04    | TXT | both   | ASCII text fil                       |
+| 05    |     | SOS    | PASCAL text file                     |
+| 06    | BIN | both   | Binary file                          |
+| 07    |     | SOS    | Font file                            |
+| 08    |     | SOS    | Graphics screen file                 |
+| 09    |     | SOS    | Business BASIC program file          |
+| 0A    |     | SOS    | Business BASIC data file             |
+| 0B    |     | SOS    | Word processor file                  |
+| 0C    |     | SOS    | SOS system file                      |
+| 0D-0E |     | SOS    | SOS reserved for future use          |
+| 0F    | DIR | both   | Directory file                       |
+| 10    |     | SOS    | RPS data file                        |
+| 11    |     | SOS    | RPS index file                       |
+| 12-18 |     | SOS    | SOS reserved for future use          |
+| 19    | ADB | ProDOS | AppleWorks data base file            |
+| 1A    | AWP | ProDOS | AppleWorks word processing file      |
+| 1B    | ASP | ProDOS | AppleWorks spreadsheet file          |
+| 1C-BF |     | SOS    | SOS reserved for future use          |
+| C0-EE |     | ProDOS | ProDOS reserved for future use       |
+| EF    | PAS | ProDOS | ProDOS PASCAL file                   |
+| F0    | CMD | ProDOS | Added command file                   |
+| F1-F8 |     | ProDOS | ProDOS user defined file types       |
+| FA    | INT | ProDOS | Integer BASIC program file           |
+| FB    | IVR | ProDOS | Integer BASIC variables file         |
+| FC    | BAS | ProDOS | Applesoft BASIC program file         |
+| FD    | VAR | ProDOS | Applesoft BASIC variables file       |
+| FE    | REL | ProDOS | EDASM relocatable object module file |
+| FF    | SYS | ProDOS | System file                          |

@@ -249,21 +249,22 @@ func (cs *CatalogSector) FromSector(data []byte) error {
 	return nil
 }
 
+// Filetype is the type for dos 3.3 filetype+locked status byte.
 type Filetype byte
 
 const (
-	// Hex 80+file type - file is locked
-	// Hex 00+file type - file is not locked
+	// Hex 80+file type - file is locked,
+	// Hex 00+file type - file is not locked.
 	FiletypeLocked Filetype = 0x80
 
-	FileTypeText        Filetype = 0x00 // Text file
-	FileTypeInteger     Filetype = 0x01 // INTEGER BASIC file
-	FileTypeApplesoft   Filetype = 0x02 // APPLESOFT BASIC file
-	FileTypeBinary      Filetype = 0x04 // BINARY file
-	FileTypeS           Filetype = 0x08 // S type file
-	FileTypeRelocatable Filetype = 0x10 // RELOCATABLE object module file
-	FileTypeA           Filetype = 0x20 // A type file
-	FileTypeB           Filetype = 0x40 // B type file
+	FiletypeText        Filetype = 0x00 // Text file
+	FiletypeInteger     Filetype = 0x01 // INTEGER BASIC file
+	FiletypeApplesoft   Filetype = 0x02 // APPLESOFT BASIC file
+	FiletypeBinary      Filetype = 0x04 // BINARY file
+	FiletypeS           Filetype = 0x08 // S type file
+	FiletypeRelocatable Filetype = 0x10 // RELOCATABLE object module file
+	FiletypeA           Filetype = 0x20 // A type file
+	FiletypeB           Filetype = 0x40 // B type file
 )
 
 type FileDescStatus int
