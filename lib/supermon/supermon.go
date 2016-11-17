@@ -294,6 +294,7 @@ func (o operator) Catalog(subdir string) ([]disk.Descriptor, error) {
 			Sectors: l,
 			Length:  l * 256,
 			Locked:  false,
+			Type:    disk.FiletypeBinary,
 		})
 	}
 	return descs, nil
