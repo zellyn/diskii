@@ -350,6 +350,56 @@ func (fd *FileDesc) FilenameString() string {
 	return strings.TrimRight(string(slice), " ")
 }
 
+// Contents returns the on-disk contents of a file represented by a
+// FileDesc.
+func (fd *FileDesc) Contents(lsd disk.LogicalSectorDisk) ([]byte, error) {
+	tsls := []TrackSectorList{}
+	nextTrack := fd.TrackSectorListTrack
+	nextSector := fd.TrackSectorListSector
+	seen := map[disk.TrackSector]bool{}
+	for nextTrack != 0 || nextSector != 0 {
+		ts := disk.TrackSector{Track: nextTrack, Sector: nextSector}
+		if seen[ts] {
+			return nil, fmt.Errorf("File %q tries to read TrackSector track=%d sector=%d twice", fd.FilenameString(), nextTrack, nextSector)
+		}
+		seen[ts] = true
+		tsl := TrackSectorList{}
+		if err := disk.UnmarshalLogicalSector(lsd, &tsl, nextTrack, nextSector); err != nil {
+			return nil, err
+		}
+		tsls = append(tsls, tsl)
+		nextTrack = tsl.NextTrack
+		nextSector = tsl.NextSector
+	}
+	data := make([]byte, 0, 256*122*len(tsls))
+	for i, tsl := range tsls {
+		end := 121
+		// If it's the last tsl, stop at the last non-zero TrackSector.
+		if i == len(tsls)-1 {
+			for j, ts := range tsl.TrackSectors {
+				if ts.Track != 0 || ts.Sector != 0 {
+					end = j
+				}
+			}
+		}
+		for j := 0; j <= end; j++ {
+			ts := tsl.TrackSectors[j]
+			if ts.Track == 0 && ts.Sector == 0 {
+				for k := 0; k < 256; k++ {
+					data = append(data, 0)
+				}
+			} else {
+				contents, err := lsd.ReadLogicalSector(ts.Track, ts.Sector)
+				if err != nil {
+					return nil, err
+				}
+				data = append(data, contents...)
+			}
+		}
+	}
+	return data, nil
+}
+
 // TrackSectorList is the struct used to represent DOS 3.3
 // Track/Sector List sectors.
 type TrackSectorList struct {
@@ -416,7 +466,12 @@ func readCatalogSectors(d disk.LogicalSectorDisk) ([]CatalogSector, error) {
 	nextTrack := v.CatalogTrack
 	nextSector := v.CatalogSector
 	css := []CatalogSector{}
+	seen := map[disk.TrackSector]bool{}
 	for nextTrack != 0 || nextSector != 0 {
+		ts := disk.TrackSector{Track: nextTrack, Sector: nextSector}
+		if seen[ts] {
+			return nil, fmt.Errorf("Catalog tries to read TrackSector track=%d sector=%d twice", nextTrack, nextSector)
+		}
 		if nextTrack >= v.NumTracks {
 			return nil, fmt.Errorf("catalog sectors can't be in track %d: disk only has %d tracks", nextTrack, v.NumTracks)
 		}
