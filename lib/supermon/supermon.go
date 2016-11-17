@@ -325,8 +325,8 @@ func (o operator) GetFile(filename string) (disk.FileInfo, error) {
 	}, nil
 }
 
-// operatorFactory is the factory that returns dos33 operators given
-// disk images.
+// operatorFactory is the factory that returns supermon operators
+// given disk images.
 func operatorFactory(sd disk.SectorDisk) (disk.Operator, error) {
 	sm, err := LoadSectorMap(sd)
 	if err != nil {

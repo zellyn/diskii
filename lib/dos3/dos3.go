@@ -1,7 +1,8 @@
 // Copyright © 2016 Zellyn Hunter <zellyn@gmail.com>
 
-// Package dos33 contains routines for working with the on-disk structures of DOS 3.3.
-package dos33
+// Package dos3 contains routines for working with the on-disk
+// structures of Apple DOS 3.
+package dos3
 
 import (
 	"encoding/binary"
@@ -465,8 +466,8 @@ type operator struct {
 var _ disk.Operator = operator{}
 
 // operatorName is the keyword name for the operator that undestands
-// dos33 disks.
-const operatorName = "dos33"
+// dos3 disks.
+const operatorName = "dos3"
 
 // Name returns the name of the operator.
 func (o operator) Name() string {
@@ -504,7 +505,7 @@ func (o operator) GetFile(filename string) (disk.FileInfo, error) {
 	return disk.FileInfo{}, fmt.Errorf("%s does not yet implement `GetFile`", operatorName)
 }
 
-// operatorFactory is the factory that returns dos33 operators given
+// operatorFactory is the factory that returns dos3 operators given
 // disk images.
 func operatorFactory(sd disk.SectorDisk) (disk.Operator, error) {
 	lsd, err := disk.NewMappedDisk(sd, disk.Dos33LogicalToPhysicalSectorMap)

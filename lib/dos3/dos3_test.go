@@ -1,4 +1,4 @@
-package dos33
+package dos3
 
 import (
 	"crypto/rand"
