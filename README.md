@@ -37,7 +37,7 @@ Current disk operations supported:
 | ---------------- | ------------------ | ------ | ------------------ |
 | basic structures | :white_check_mark: | :x:    | :white_check_mark: |
 | ls               | :white_check_mark: | :x:    | :white_check_mark: |
-| dump             | :x:                | :x:    | :white_check_mark: |
+| dump             | :white_check_mark: | :x:    | :white_check_mark: |
 | dumptext         | :x:                | :x:    | :x:                |
 | delete           | :x:                | :x:    | :x:                |
 | rename           | :x:                | :x:    | :x:                |
