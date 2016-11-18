@@ -319,6 +319,7 @@ func (o operator) GetFile(filename string) (disk.FileInfo, error) {
 		Length:  len(data),
 		Locked:  false,
 		Type:    disk.FiletypeBinary,
+		// TODO(zellyn): Set StartAddress if we know it.
 	}
 	return disk.FileInfo{
 		Descriptor: desc,

@@ -350,6 +350,37 @@ func (fd *FileDesc) FilenameString() string {
 	return strings.TrimRight(string(slice), " ")
 }
 
+// descriptor returns a disk.Descriptor for a FileDesc, but with the
+// length set to -1, since we can't know it without reading the file
+// contents.
+func (fd FileDesc) descriptor() disk.Descriptor {
+	desc := disk.Descriptor{
+		Name:    fd.FilenameString(),
+		Sectors: int(fd.SectorCount),
+		Length:  -1,
+		Locked:  (fd.Filetype & FiletypeLocked) > 0,
+	}
+	switch fd.Filetype & 0x7f {
+	case FiletypeText: // Text file
+		desc.Type = disk.FiletypeASCIIText
+	case FiletypeInteger: // INTEGER BASIC file
+		desc.Type = disk.FiletypeIntegerBASIC
+	case FiletypeApplesoft: // APPLESOFT BASIC file
+		desc.Type = disk.FiletypeApplesoftBASIC
+	case FiletypeBinary: // BINARY file
+		desc.Type = disk.FiletypeBinary
+	case FiletypeS: // S type file
+		desc.Type = disk.FiletypeS
+	case FiletypeRelocatable: // RELOCATABLE object module file
+		desc.Type = disk.FiletypeRelocatable
+	case FiletypeA: // A type file
+		desc.Type = disk.FiletypeA
+	case FiletypeB: // B type file
+		desc.Type = disk.FiletypeB
+	}
+	return desc
+}
+
 // Contents returns the on-disk contents of a file represented by a
 // FileDesc.
 func (fd *FileDesc) Contents(lsd disk.LogicalSectorDisk) ([]byte, error) {
@@ -544,20 +575,80 @@ func (o operator) Catalog(subdir string) ([]disk.Descriptor, error) {
 	}
 	descs := make([]disk.Descriptor, 0, len(fds))
 	for _, fd := range fds {
-		descs = append(descs, disk.Descriptor{
-			Name:    fd.FilenameString(),
-			Sectors: int(fd.SectorCount),
-			Length:  -1, // TODO(zellyn): read actual file length
-			Locked:  (fd.Filetype & FiletypeLocked) > 0,
-		})
+		descs = append(descs, fd.descriptor())
 	}
 	return descs, nil
 }
 
+// fileForFilename returns the FileDesc corresponding to the given
+// filename, or an error.
+func (o operator) fileForFilename(filename string) (FileDesc, error) {
+	fds, _, err := ReadCatalog(o.lsd)
+	if err != nil {
+		return FileDesc{}, err
+	}
+	for _, fd := range fds {
+		if fd.FilenameString() == filename {
+			return fd, nil
+		}
+	}
+	return FileDesc{}, fmt.Errorf("Filename %q not found", filename)
+}
+
 // GetFile retrieves a file by name.
 func (o operator) GetFile(filename string) (disk.FileInfo, error) {
-	// TODO(zellyn): Implement GetFile
-	return disk.FileInfo{}, fmt.Errorf("%s does not yet implement `GetFile`", operatorName)
+	fd, err := o.fileForFilename(filename)
+	if err != nil {
+		return disk.FileInfo{}, err
+	}
+	desc := fd.descriptor()
+	data, err := fd.Contents(o.lsd)
+	if err != nil {
+		return disk.FileInfo{}, err
+	}
+
+	fi := disk.FileInfo{
+		Descriptor: desc,
+		Data:       data,
+	}
+
+	errType := "UNKNOWN"
+	switch fd.Filetype & 0x7f {
+	case FiletypeText: // Text file
+		for data[len(data)-1] == 0 {
+			data = data[:len(data)-1]
+		}
+		fi.Descriptor.Length = len(data)
+		fi.Data = data
+		return fi, nil
+
+	case FiletypeInteger, FiletypeApplesoft, FiletypeBinary:
+		switch fd.Filetype & 0x7f {
+		case FiletypeApplesoft:
+			fi.StartAddress = 0x801
+		case FiletypeInteger:
+			// TODO(zellyn): figure out what address integer basic programs are stored at.
+		case FiletypeBinary:
+			fi.StartAddress = uint16(data[0]) + uint16(data[1])<<8
+			data = data[2:]
+		}
+		length := int(data[0]) + int(data[1])*256
+		data = data[2 : length+2]
+		fi.Descriptor.Length = length
+		fi.Data = data
+		return fi, nil
+
+	case FiletypeS: // S type file
+		errType = "S"
+	case FiletypeRelocatable: // RELOCATABLE object module file
+		errType = "REL"
+	case FiletypeA: // A type file
+		errType = "A"
+	case FiletypeB: // B type file
+		errType = "B"
+	}
+
+	return disk.FileInfo{}, fmt.Errorf("%s does not yet implement `GetFile` for filetype %s", operatorName, errType)
 }
 
 // operatorFactory is the factory that returns dos3 operators given

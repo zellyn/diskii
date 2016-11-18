@@ -87,8 +87,9 @@ type Operator interface {
 
 // FileInfo represents a file descriptor plus the content.
 type FileInfo struct {
-	Descriptor Descriptor
-	Data       []byte
+	Descriptor   Descriptor
+	Data         []byte
+	StartAddress uint16
 }
 
 // operatorFactory is the type of functions that accept a SectorDisk,
