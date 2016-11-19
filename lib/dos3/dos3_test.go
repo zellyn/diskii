@@ -112,6 +112,7 @@ func TestReadCatalog(t *testing.T) {
 		{true, "B", 7, "BOOT13"},
 		{true, "A", 4, "SLOT#"},
 		{false, "A", 3, "EXAMPLE"},
+		{false, "I", 2, "EXAMPLE2"},
 	}
 
 	deletedWant := []struct {
@@ -120,8 +121,8 @@ func TestReadCatalog(t *testing.T) {
 		size   int
 		name   string
 	}{
-		{false, "A", 3, "EXAMPLE2"},
 		{false, "I", 3, "EXAMPLE3"},
+		{false, "A", 3, "EXAMPLE4"},
 	}
 
 	if len(fdsWant) != len(fds) {
