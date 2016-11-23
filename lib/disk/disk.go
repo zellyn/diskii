@@ -6,6 +6,7 @@ package disk
 
 import (
 	"fmt"
+	"io"
 	"path"
 	"strings"
 )
@@ -49,6 +50,8 @@ type SectorDisk interface {
 	Sectors() byte
 	// Tracks returns the number of tracks on the SectorDisk
 	Tracks() byte
+	// Write writes the disk contents to the given file.
+	Write(io.Writer) (int, error)
 }
 
 type LogicalSectorDisk interface {
@@ -62,6 +65,8 @@ type LogicalSectorDisk interface {
 	Sectors() byte
 	// Tracks returns the number of tracks on the SectorDisk
 	Tracks() byte
+	// Write writes the disk contents to the given file.
+	Write(io.Writer) (int, error)
 }
 
 // MappedDisk wraps a SectorDisk as a LogicalSectorDisk, handling the
@@ -123,6 +128,11 @@ func (md MappedDisk) Sectors() byte {
 // Tracks returns the number of tracks in the disk image.
 func (md MappedDisk) Tracks() byte {
 	return md.sectorDisk.Tracks()
+}
+
+// Write writes the disk contents to the given file.
+func (md MappedDisk) Write(w io.Writer) (n int, err error) {
+	return md.sectorDisk.Write(w)
 }
 
 // Open opens a disk image by filename.

@@ -6,6 +6,7 @@ package disk
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 )
 
@@ -83,4 +84,9 @@ func (d DSK) Sectors() byte {
 // Tracks returns the number of tracks on the DSK image.
 func (d DSK) Tracks() byte {
 	return d.tracks
+}
+
+// Write writes the disk contents to the given file.
+func (d DSK) Write(w io.Writer) (n int, err error) {
+	return w.Write(d.data)
 }

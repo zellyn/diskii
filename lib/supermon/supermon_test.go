@@ -3,6 +3,7 @@
 package supermon
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/zellyn/diskii/lib/disk"
@@ -135,5 +136,45 @@ No more; and by a sleep, to say we end
 `
 	if got != want {
 		t.Errorf("Incorrect result for GetFile(\"TOBE\"): want %q; got %q", want, got)
+	}
+}
+
+// TestEncodeDecode tests encoding and decoding of Super-Mon symbol
+// table entries.
+func TestEncodeDecode(t *testing.T) {
+	testdata := []struct {
+		sym   string
+		valid bool
+	}{
+		{"ABC", true},
+		{"abc", true},
+		{"ABCDEFGHI", true},
+		{"abcdefghi", true},
+		{"ABCDEF123", true},
+		{"abcdef123", true},
+
+		{"AB", false},
+		{"ab", false},
+		{"ABCDE1234", false},
+		{"abcde1234", false},
+	}
+
+	for _, tt := range testdata {
+		if !tt.valid {
+			if _, err := encodeSymbol(tt.sym); err == nil {
+				t.Errorf("Expected symbol %q to be invalid, but wansn't", tt.sym)
+			}
+			continue
+		}
+
+		bytes, err := encodeSymbol(tt.sym)
+		if err != nil {
+			t.Errorf("Unexpected error encoding symbol %q", tt.sym)
+			continue
+		}
+		sym := decodeSymbol(bytes[:5], bytes[5])
+		if sym != strings.ToUpper(tt.sym) {
+			t.Errorf("Symbol %q encodes to %q", tt.sym, sym)
+		}
 	}
 }

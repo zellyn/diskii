@@ -4,9 +4,8 @@
 // structures of NakedOS/Super-Mon disks.
 package supermon
 
-// TODO(zellyn): remove panics.
-
 import (
+	"encoding/binary"
 	"fmt"
 	"strconv"
 	"strings"
@@ -152,6 +151,44 @@ func decodeSymbol(five []byte, extra byte) string {
 	return result
 }
 
+// encodeSymbol encodes a symbol name into the five+1 bytes used in a
+// Super-Mon encoded symbol table entry. The returned byte array will
+// always be six bytes long. If it can't be encoded, it returns an
+// error.
+func encodeSymbol(name string) (six []byte, err error) {
+	if len(name) > 9 {
+		return nil, fmt.Errorf("invalid Super-Mon symbol %q: too long", name)
+	}
+	if len(name) < 3 {
+		return nil, fmt.Errorf("invalid Super-Mon symbol %q: too short", name)
+	}
+	nm := []byte(strings.ToUpper(name))
+	value := uint64(0)
+	bits := 0
+	for i := len(nm) - 1; i >= 0; i-- {
+		ch := nm[i]
+		switch {
+		case 'A' <= ch && ch <= 'Z':
+			value = value<<5 + uint64(ch-'@')
+			bits += 5
+		case '0' <= ch && ch <= '4':
+			value = value<<6 + 0x1b + uint64(ch-'0')
+			bits += 6
+		case '5' <= ch && ch <= '9':
+			value = value<<6 + 0x3b + uint64(ch-'5')
+			bits += 6
+		}
+		if bits > 48 {
+			return nil, fmt.Errorf("invalid Super-Mon symbol %q: too long", name)
+		}
+	}
+	eight := make([]byte, 8)
+	six = make([]byte, 6)
+	binary.LittleEndian.PutUint64(eight, value)
+	copy(six, eight)
+	return six, nil
+}
+
 // SymbolTable represents an entire Super-Mon symbol table. It'll
 // always be 819 entries long, because it includes blanks.
 type SymbolTable []Symbol
@@ -192,7 +229,7 @@ func (sm SectorMap) ReadSymbolTable(sd disk.SectorDisk) (SymbolTable, error) {
 			if (linkAddr-0xD000)%5 != 0 {
 				return nil, fmt.Errorf("Expected symbol table link address to 0xD000+5x; got 0x%04X", linkAddr)
 			}
-			link = (int(linkAddr) - 0xD000) % 5
+			link = (int(linkAddr) - 0xD000) / 5
 		}
 		extra := symtbl1[i+4]
 		copy(five, symtbl2[i:i+5])
@@ -205,9 +242,25 @@ func (sm SectorMap) ReadSymbolTable(sd disk.SectorDisk) (SymbolTable, error) {
 		table = append(table, symbol)
 	}
 
-	// TODO(zellyn): check link addresses.
+	for i, sym := range table {
+		if sym.Address != 0 && sym.Link != -1 {
+			if sym.Link == i {
+				return nil, fmt.Errorf("Symbol %q (0x%04X) links to itself", sym.Name, sym.Address)
+			}
+			linkSym := table[sym.Link]
+			if addrHash(sym.Address) != addrHash(linkSym.Address) {
+				return nil, fmt.Errorf("Symbol %q (0x%04X) with hash 0x%02X links to symbol %q (0x%04X) with hash 0x%02X",
+					sym.Name, sym.Address, addrHash(sym.Address), linkSym.Name, linkSym.Address, addrHash(linkSym.Address))
+			}
+		}
+	}
 
 	return table, nil
+}
+
+// addrHash computes the SuperMon hash for an address.
+func addrHash(addr uint16) byte {
+	return (byte(addr) ^ byte(addr>>8)) & 0x7f
 }
 
 // SymbolsByAddress returns a map of addresses to slices of symbols.
@@ -319,12 +372,21 @@ func (o operator) GetFile(filename string) (disk.FileInfo, error) {
 		Length:  len(data),
 		Locked:  false,
 		Type:    disk.FiletypeBinary,
-		// TODO(zellyn): Set StartAddress if we know it.
 	}
-	return disk.FileInfo{
+	fi := disk.FileInfo{
 		Descriptor: desc,
 		Data:       data,
-	}, nil
+	}
+	if file == 1 {
+		fi.StartAddress = 0x1800
+	}
+	return fi, nil
+}
+
+// Delete deletes a file by name. It returns true if the file was
+// deleted, false if it didn't exist.
+func (o operator) Delete(filename string) (bool, error) {
+	return false, fmt.Errorf("%s does not implement Delete yet", operatorName)
 }
 
 // operatorFactory is the factory that returns supermon operators

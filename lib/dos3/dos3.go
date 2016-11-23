@@ -651,6 +651,12 @@ func (o operator) GetFile(filename string) (disk.FileInfo, error) {
 	return disk.FileInfo{}, fmt.Errorf("%s does not yet implement `GetFile` for filetype %s", operatorName, errType)
 }
 
+// Delete deletes a file by name. It returns true if the file was
+// deleted, false if it didn't exist.
+func (o operator) Delete(filename string) (bool, error) {
+	return false, fmt.Errorf("%s does not implement Delete yet", operatorName)
+}
+
 // operatorFactory is the factory that returns dos3 operators given
 // disk images.
 func operatorFactory(sd disk.SectorDisk) (disk.Operator, error) {

@@ -83,6 +83,9 @@ type Operator interface {
 	Catalog(subdir string) ([]Descriptor, error)
 	// GetFile retrieves a file by name.
 	GetFile(filename string) (FileInfo, error)
+	// Delete deletes a file by name. It returns true if the file was
+	// deleted, false if it didn't exist.
+	Delete(filename string) (bool, error)
 }
 
 // FileInfo represents a file descriptor plus the content.
