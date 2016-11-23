@@ -7,7 +7,8 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/zellyn/diskii/lib/applesoft"
+	"github.com/zellyn/diskii/lib/basic"
+	"github.com/zellyn/diskii/lib/basic/applesoft"
 	"github.com/zellyn/diskii/lib/helpers"
 )
 
@@ -61,7 +62,7 @@ func runDecode(args []string) error {
 	if rawControlCodes {
 		os.Stdout.WriteString(listing.String())
 	} else {
-		os.Stdout.WriteString(applesoft.ChevronControlCodes(listing.String()))
+		os.Stdout.WriteString(basic.ChevronControlCodes(listing.String()))
 	}
 	return nil
 }

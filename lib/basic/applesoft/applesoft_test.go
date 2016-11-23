@@ -2,7 +2,11 @@
 
 package applesoft
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/zellyn/diskii/lib/basic"
+)
 
 // helloBinary is a simple basic program used for testing. Listing
 // below.
@@ -46,7 +50,7 @@ func TestParse(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	text := ChevronControlCodes(listing.String())
+	text := basic.ChevronControlCodes(listing.String())
 	if text != helloListing {
 		t.Fatalf("Wrong listing; want:\n%s\ngot:\n%s", helloListing, text)
 	}
