@@ -146,6 +146,7 @@ func TestEncodeDecode(t *testing.T) {
 		sym   string
 		valid bool
 	}{
+		{"", true},
 		{"ABC", true},
 		{"abc", true},
 		{"ABCDEFGHI", true},

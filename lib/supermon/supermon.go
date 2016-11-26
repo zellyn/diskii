@@ -154,8 +154,12 @@ func decodeSymbol(five []byte, extra byte) string {
 // encodeSymbol encodes a symbol name into the five+1 bytes used in a
 // Super-Mon encoded symbol table entry. The returned byte array will
 // always be six bytes long. If it can't be encoded, it returns an
-// error.
+// error. Empty strings are encoded as all zeros.
 func encodeSymbol(name string) (six []byte, err error) {
+	if name == "" {
+		six := make([]byte, 6)
+		return six, nil
+	}
 	if len(name) > 9 {
 		return nil, fmt.Errorf("invalid Super-Mon symbol %q: too long", name)
 	}
@@ -272,6 +276,64 @@ func (st SymbolTable) SymbolsByAddress() map[uint16][]Symbol {
 		}
 	}
 	return result
+}
+
+// DeleteSymbol deletes an existing symbol. Returns true if the named
+// symbol was found.
+func (st SymbolTable) DeleteSymbol(name string) bool {
+	for i, sym := range st {
+		if strings.EqualFold(name, sym.Name) {
+			sym.Name = ""
+			sym.Address = 0
+			for j := range st {
+				if i == j {
+					continue
+				}
+				if st[j].Link == i {
+					st[j].Link = sym.Link
+					break
+				}
+			}
+			st[i] = sym
+			return true
+		}
+	}
+	return false
+}
+
+// AddSymbol adds a new symbol. If a symbol with the given name
+// already exists with a different address, it deletes it first.
+func (st SymbolTable) AddSymbol(name string, address uint16) error {
+	if address == 0 {
+		return fmt.Errorf("cannot set symbol %q to address 0")
+	}
+	hash := addrHash(address)
+	pos := -1
+	for j, sym := range st {
+		if strings.EqualFold(name, sym.Name) {
+			// If we can, simply update the address.
+			if addrHash(sym.Address) == hash {
+				st[j].Address = address
+				return nil
+			}
+			st.DeleteSymbol(name)
+			pos = j
+			break
+		}
+		if pos == -1 && sym.Address == 0 {
+			pos = j
+		}
+	}
+	for j, sym := range st {
+		if addrHash(sym.Address) == hash && sym.Link == -1 {
+			st[j].Link = pos
+			break
+		}
+	}
+	st[pos].Name = name
+	st[pos].Address = address
+	st[pos].Link = -1
+	return nil
 }
 
 // NameForFile returns a string representation of a filename:
