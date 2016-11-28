@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/zellyn/diskii/lib/disk"
+	"github.com/zellyn/diskii/lib/errors"
 )
 
 const (
@@ -45,6 +46,37 @@ func LoadSectorMap(sd disk.SectorDisk) (SectorMap, error) {
 	copy(sm[0x30:0x130], sector0A)
 	copy(sm[0x130:0x230], sector0B)
 	return sm, nil
+}
+
+// Persist writes the current contenst of a sector map back back to
+// disk.
+func (sm SectorMap) Persist(sd disk.SectorDisk) error {
+	sector09, err := sd.ReadPhysicalSector(0, 9)
+	if err != nil {
+		return err
+	}
+	copy(sector09[0xd0:], sm[0:0x30])
+	if err := sd.WritePhysicalSector(0, 9, sector09); err != nil {
+		return err
+	}
+	if err := sd.WritePhysicalSector(0, 0xA, sm[0x30:0x130]); err != nil {
+		return err
+	}
+	if err := sd.WritePhysicalSector(0, 0xB, sm[0x130:0x230]); err != nil {
+		return err
+	}
+	return nil
+}
+
+// FreeSectors returns the number of blocks free in a sector map.
+func (sm SectorMap) FreeSectors() int {
+	count := 0
+	for _, file := range sm {
+		if file == FileFree {
+			count++
+		}
+	}
+	return count
 }
 
 // Verify checks that we actually have a NakedOS disk.
@@ -116,6 +148,49 @@ func (sm SectorMap) ReadFile(sd disk.SectorDisk, file byte) ([]byte, error) {
 		result = append(result, bytes...)
 	}
 	return result, nil
+}
+
+// Delete deletes a file from the sector map. It does not persist the changes.
+func (sm SectorMap) Delete(file byte) {
+	for i, f := range sm {
+		if f == file {
+			sm[i] = FileFree
+		}
+	}
+}
+
+// WriteFile writes the contents of a file.
+func (sm SectorMap) WriteFile(sd disk.SectorDisk, file byte, contents []byte, overwrite bool) error {
+	sectorsNeeded := (len(contents) + 255) / 256
+	cts := make([]byte, 256*sectorsNeeded)
+	copy(cts, contents)
+	free := sm.FreeSectors() + len(sm.SectorsForFile(file))
+	if free < sectorsNeeded {
+		return errors.OutOfSpacef("file requires %d sectors, but only %d are available")
+	}
+	sm.Delete(file)
+
+	// TODO(zellyn): continue implementation.
+	return fmt.Errorf("WriteFile not implemented yet")
+	i := 0
+OUTER:
+	for track := byte(0); track < sd.Tracks(); track++ {
+		for sector := byte(0); sector < sd.Sectors(); sector++ {
+			if sm.FileForSector(track, sector) == file {
+				if err := sd.WritePhysicalSector(track, sector, cts[i*256:(i+1)*256]); err != nil {
+					return err
+				}
+				i++
+				if i == sectorsNeeded {
+					break OUTER
+				}
+			}
+		}
+	}
+	if err := sm.Persist(sd); err != nil {
+		return err
+	}
+	return nil
 }
 
 // Symbol represents a single Super-Mon symbol.
