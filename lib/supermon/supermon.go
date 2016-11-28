@@ -164,14 +164,18 @@ func (sm SectorMap) WriteFile(sd disk.SectorDisk, file byte, contents []byte, ov
 	sectorsNeeded := (len(contents) + 255) / 256
 	cts := make([]byte, 256*sectorsNeeded)
 	copy(cts, contents)
-	free := sm.FreeSectors() + len(sm.SectorsForFile(file))
+	existing := len(sm.SectorsForFile(file))
+	free := sm.FreeSectors() + existing
 	if free < sectorsNeeded {
-		return errors.OutOfSpacef("file requires %d sectors, but only %d are available")
+		return errors.OutOfSpacef("file %d requires %d sectors, but only %d are available", file, sectorsNeeded, free)
 	}
-	sm.Delete(file)
+	if existing > 0 {
+		if !overwrite {
+			return errors.FileExistsf("file %d already exists", file)
+		}
+		sm.Delete(file)
+	}
 
-	// TODO(zellyn): continue implementation.
-	return fmt.Errorf("WriteFile not implemented yet")
 	i := 0
 OUTER:
 	for track := byte(0); track < sd.Tracks(); track++ {
@@ -337,6 +341,36 @@ func (sm SectorMap) ReadSymbolTable(sd disk.SectorDisk) (SymbolTable, error) {
 	return table, nil
 }
 
+// WriteSymbolTable writes a symbol table to a disk.
+func (sm SectorMap) WriteSymbolTable(sd disk.SectorDisk, st SymbolTable) error {
+	symtbl1 := make([]byte, 0x1000)
+	symtbl2 := make([]byte, 0x1000)
+	for i, sym := range st {
+		offset := i * 5
+		linkAddr := 0
+		six, err := encodeSymbol(sym.Name)
+		if err != nil {
+			return err
+		}
+		if sym.Link != -1 {
+			linkAddr = sym.Link*5 + 0xD000
+		}
+		symtbl1[offset] = byte(sym.Address % 256)
+		symtbl1[offset+1] = byte(sym.Address >> 8)
+		symtbl1[offset+2] = byte(linkAddr % 256)
+		symtbl1[offset+3] = byte(linkAddr >> 8)
+		symtbl1[offset+4] = six[5]
+		copy(symtbl2[offset:offset+5], six)
+	}
+	if err := sm.WriteFile(sd, 3, symtbl1, true); err != nil {
+		return fmt.Errorf("unable to write first half of symbol table: %v", err)
+	}
+	if err := sm.WriteFile(sd, 4, symtbl2, true); err != nil {
+		return fmt.Errorf("unable to write first second of symbol table: %v", err)
+	}
+	return nil
+}
+
 // addrHash computes the SuperMon hash for an address.
 func addrHash(addr uint16) byte {
 	return (byte(addr) ^ byte(addr>>8)) & 0x7f
@@ -439,7 +473,7 @@ func (st SymbolTable) FileForName(filename string) (byte, error) {
 		}
 	}
 
-	return 0, fmt.Errorf("invalid filename: %q", filename)
+	return 0, errors.FileNotFoundf("filename %q not found", filename)
 }
 
 // operator is a disk.Operator - an interface for performing
@@ -523,7 +557,24 @@ func (o operator) GetFile(filename string) (disk.FileInfo, error) {
 // Delete deletes a file by name. It returns true if the file was
 // deleted, false if it didn't exist.
 func (o operator) Delete(filename string) (bool, error) {
-	return false, fmt.Errorf("%s does not implement Delete yet", operatorName)
+	file, err := o.st.FileForName(filename)
+	if err != nil {
+		return false, err
+	}
+	existed := len(o.sm.SectorsForFile(file)) > 0
+	o.sm.Delete(file)
+	if err := o.sm.Persist(o.sd); err != nil {
+		return existed, err
+	}
+	if o.st != nil {
+		changed := o.st.DeleteSymbol(filename)
+		if changed {
+			if err := o.sm.WriteSymbolTable(o.sd, o.st); err != nil {
+				return existed, err
+			}
+		}
+	}
+	return existed, nil
 }
 
 // operatorFactory is the factory that returns supermon operators

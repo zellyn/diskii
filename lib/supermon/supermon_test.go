@@ -163,7 +163,7 @@ func TestEncodeDecode(t *testing.T) {
 	for _, tt := range testdata {
 		if !tt.valid {
 			if _, err := encodeSymbol(tt.sym); err == nil {
-				t.Errorf("Expected symbol %q to be invalid, but wansn't", tt.sym)
+				t.Errorf("Expected symbol %q to be invalid, but wasn't", tt.sym)
 			}
 			continue
 		}
