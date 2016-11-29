@@ -3,9 +3,11 @@
 package supermon
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 
+	"github.com/kr/pretty"
 	"github.com/zellyn/diskii/lib/disk"
 )
 
@@ -177,5 +179,29 @@ func TestEncodeDecode(t *testing.T) {
 		if sym != strings.ToUpper(tt.sym) {
 			t.Errorf("Symbol %q encodes to %q", tt.sym, sym)
 		}
+	}
+}
+
+// TestReadWriteSymbolTable tests reading, writing, and re-reading of
+// the symbol table, ensuring that no details are lost along the way.
+func TestReadWriteSymbolTable(t *testing.T) {
+	sm, sd, err := loadSectorMap(testDisk)
+	if err != nil {
+		t.Fatal(err)
+	}
+	st1, err := sm.ReadSymbolTable(sd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := sm.WriteSymbolTable(sd, st1); err != nil {
+		t.Fatal(err)
+	}
+	st2, err := sm.ReadSymbolTable(sd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(st1, st2) {
+		pretty.Ldiff(t, st1, st2)
+		t.Fatal("Saved and reloaded symbol table differs from original symbol table")
 	}
 }

@@ -111,6 +111,22 @@ func (sm SectorMap) FileForSector(track, sector byte) byte {
 	return sm[int(track)*16+int(sector)]
 }
 
+// SetFileForSector sets the file that owns the given track/sector, or
+// returns an error if the track or sector is too high.
+func (sm SectorMap) SetFileForSector(track, sector, file byte) error {
+	if track >= 35 {
+		return fmt.Errorf("track %d >34", track)
+	}
+	if sector >= 16 {
+		return fmt.Errorf("sector %d >15", sector)
+	}
+	if file == FileIllegal || file == FileFree || file == FileReserved {
+		return fmt.Errorf("illegal file number: 0x%0X", file)
+	}
+	sm[int(track)*16+int(sector)] = file
+	return nil
+}
+
 // SectorsForFile returns the list of sectors that belong to the given
 // file.
 func (sm SectorMap) SectorsForFile(file byte) []disk.TrackSector {
@@ -180,8 +196,11 @@ func (sm SectorMap) WriteFile(sd disk.SectorDisk, file byte, contents []byte, ov
 OUTER:
 	for track := byte(0); track < sd.Tracks(); track++ {
 		for sector := byte(0); sector < sd.Sectors(); sector++ {
-			if sm.FileForSector(track, sector) == file {
+			if sm.FileForSector(track, sector) == FileFree {
 				if err := sd.WritePhysicalSector(track, sector, cts[i*256:(i+1)*256]); err != nil {
+					return err
+				}
+				if err := sm.SetFileForSector(track, sector, file); err != nil {
 					return err
 				}
 				i++
