@@ -657,6 +657,13 @@ func (o operator) Delete(filename string) (bool, error) {
 	return false, fmt.Errorf("%s does not implement Delete yet", operatorName)
 }
 
+// WriteRaw writes raw contents of a file by name. If the file exists
+// and overwrite is false, it returns with an error. Otherwise it
+// returns true if an existing file was overwritten.
+func (o operator) WriteRaw(filename string, contents []byte, overwrite bool) (bool, error) {
+	return false, fmt.Errorf("%s does not implement WriteRaw yet", operatorName)
+}
+
 // operatorFactory is the factory that returns dos3 operators given
 // disk images.
 func operatorFactory(sd disk.SectorDisk) (disk.Operator, error) {

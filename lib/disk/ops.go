@@ -86,6 +86,10 @@ type Operator interface {
 	// Delete deletes a file by name. It returns true if the file was
 	// deleted, false if it didn't exist.
 	Delete(filename string) (bool, error)
+	// WriteRaw writes raw contents of a file by name. If the file exists
+	// and overwrite is false, it returns with an error. Otherwise it
+	// returns true if an existing file was overwritten.
+	WriteRaw(filename string, contents []byte, overwrite bool) (existed bool, err error)
 }
 
 // FileInfo represents a file descriptor plus the content.

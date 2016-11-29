@@ -48,6 +48,18 @@ func LoadSectorMap(sd disk.SectorDisk) (SectorMap, error) {
 	return sm, nil
 }
 
+// FirstFreeFile returns the first file number that isn't already
+// used. It returns 0 if all are already used.
+func (sm SectorMap) FirstFreeFile() byte {
+	for file := byte(0x01); file < 0xfe; file++ {
+		sectors := sm.SectorsForFile(file)
+		if len(sectors) == 0 {
+			return file
+		}
+	}
+	return 0
+}
+
 // Persist writes the current contenst of a sector map back back to
 // disk.
 func (sm SectorMap) Persist(sd disk.SectorDisk) error {
@@ -175,19 +187,21 @@ func (sm SectorMap) Delete(file byte) {
 	}
 }
 
-// WriteFile writes the contents of a file.
-func (sm SectorMap) WriteFile(sd disk.SectorDisk, file byte, contents []byte, overwrite bool) error {
+// WriteFile writes the contents of a file. It returns true if the
+// file already existed.
+func (sm SectorMap) WriteFile(sd disk.SectorDisk, file byte, contents []byte, overwrite bool) (bool, error) {
 	sectorsNeeded := (len(contents) + 255) / 256
 	cts := make([]byte, 256*sectorsNeeded)
 	copy(cts, contents)
 	existing := len(sm.SectorsForFile(file))
+	existed := existing > 0
 	free := sm.FreeSectors() + existing
 	if free < sectorsNeeded {
-		return errors.OutOfSpacef("file %d requires %d sectors, but only %d are available", file, sectorsNeeded, free)
+		return existed, errors.OutOfSpacef("file %d requires %d sectors, but only %d are available", file, sectorsNeeded, free)
 	}
-	if existing > 0 {
+	if existed {
 		if !overwrite {
-			return errors.FileExistsf("file %d already exists", file)
+			return existed, errors.FileExistsf("file %d already exists", file)
 		}
 		sm.Delete(file)
 	}
@@ -198,10 +212,10 @@ OUTER:
 		for sector := byte(0); sector < sd.Sectors(); sector++ {
 			if sm.FileForSector(track, sector) == FileFree {
 				if err := sd.WritePhysicalSector(track, sector, cts[i*256:(i+1)*256]); err != nil {
-					return err
+					return existed, err
 				}
 				if err := sm.SetFileForSector(track, sector, file); err != nil {
-					return err
+					return existed, err
 				}
 				i++
 				if i == sectorsNeeded {
@@ -211,9 +225,9 @@ OUTER:
 		}
 	}
 	if err := sm.Persist(sd); err != nil {
-		return err
+		return existed, err
 	}
-	return nil
+	return existed, nil
 }
 
 // Symbol represents a single Super-Mon symbol.
@@ -381,10 +395,10 @@ func (sm SectorMap) WriteSymbolTable(sd disk.SectorDisk, st SymbolTable) error {
 		symtbl1[offset+4] = six[5]
 		copy(symtbl2[offset:offset+5], six)
 	}
-	if err := sm.WriteFile(sd, 3, symtbl1, true); err != nil {
+	if _, err := sm.WriteFile(sd, 3, symtbl1, true); err != nil {
 		return fmt.Errorf("unable to write first half of symbol table: %v", err)
 	}
-	if err := sm.WriteFile(sd, 4, symtbl2, true); err != nil {
+	if _, err := sm.WriteFile(sd, 4, symtbl2, true); err != nil {
 		return fmt.Errorf("unable to write first second of symbol table: %v", err)
 	}
 	return nil
@@ -452,6 +466,9 @@ func (st SymbolTable) AddSymbol(name string, address uint16) error {
 			pos = j
 		}
 	}
+	if pos == -1 {
+		return fmt.Errorf("symbol table full")
+	}
 	for j, sym := range st {
 		if addrHash(sym.Address) == hash && sym.Link == -1 {
 			st[j].Link = pos
@@ -473,14 +490,26 @@ func NameForFile(file byte, symbols []Symbol) string {
 	return fmt.Sprintf("DF%02X", file)
 }
 
+// parseAddressFilename parses filenames of the form DFxx and returns
+// the xx part. Invalid filenames result in 0.
+func parseAddressFilename(filename string) byte {
+	if addr, err := strconv.ParseUint(filename, 16, 16); err == nil {
+		if addr > 0xDF00 && addr < 0xDFFE {
+			return byte(addr - 0xDF00)
+		}
+		if addr > 0x00 && addr < 0xFE {
+			return byte(addr)
+		}
+	}
+	return 0
+}
+
 // FileForName returns a byte file number for a representation of a
 // filename: either DFxx, or a symbol, if one exists with the given
 // name and points to a DFxx address.
 func (st SymbolTable) FileForName(filename string) (byte, error) {
-	if addr, err := strconv.ParseUint(filename, 16, 16); err == nil {
-		if addr > 0xDF00 && addr < 0xDFFE {
-			return byte(addr - 0xDF00), nil
-		}
+	if addr := parseAddressFilename(filename); addr != 0 {
+		return addr, nil
 	}
 
 	for _, symbol := range st {
@@ -493,6 +522,40 @@ func (st SymbolTable) FileForName(filename string) (byte, error) {
 	}
 
 	return 0, errors.FileNotFoundf("filename %q not found", filename)
+}
+
+// FilesForCompoundName parses a complex filename of the form DFxx,
+// FILENAME, or DFxx:FILENAME, returning the file number before the
+// colon, and the file name number after the colon, and the symbol
+// name.
+func (st SymbolTable) FilesForCompoundName(filename string) (numFile byte, namedFile byte, symbol string, err error) {
+	parts := strings.Split(filename, ":")
+	if len(parts) > 2 {
+		return 0, 0, "", fmt.Errorf("more than one colon in compound filename: %q", filename)
+	}
+	if len(parts) == 1 {
+		numFile = parseAddressFilename(filename)
+		if numFile != 0 {
+			return numFile, 0, "", nil
+		}
+		file, err := st.FileForName(filename)
+		if err != nil {
+			return 0, 0, filename, nil
+		}
+		return file, file, filename, nil
+	}
+	numFile = parseAddressFilename(parts[0])
+	if numFile == 0 {
+		return 0, 0, "", fmt.Errorf("invalid file number: %q", parts[0])
+	}
+	if numFile2 := parseAddressFilename(parts[1]); numFile2 != 0 {
+		return 0, 0, "", fmt.Errorf("cannot valid file number (%q) as a filename")
+	}
+	namedFile, err = st.FileForName(parts[1])
+	if err != nil {
+		return numFile, 0, parts[1], nil
+	}
+	return numFile, namedFile, parts[1], nil
 }
 
 // operator is a disk.Operator - an interface for performing
@@ -591,6 +654,43 @@ func (o operator) Delete(filename string) (bool, error) {
 			if err := o.sm.WriteSymbolTable(o.sd, o.st); err != nil {
 				return existed, err
 			}
+		}
+	}
+	return existed, nil
+}
+
+// WriteRaw writes raw contents of a file by name. If the file exists
+// and overwrite is false, it returns with an error. Otherwise it
+// returns true if an existing file was overwritten.
+func (o operator) WriteRaw(filename string, contents []byte, overwrite bool) (bool, error) {
+	numFile, namedFile, symbol, err := o.st.FilesForCompoundName(filename)
+	if err != nil {
+		return false, err
+	}
+	if symbol != "" {
+		if o.st == nil {
+			return false, fmt.Errorf("cannot use symbolic names on disks without valid symbol tables in files 0x03 and 0x04")
+		}
+		if _, err := encodeSymbol(symbol); err != nil {
+			return false, err
+		}
+	}
+	if numFile == 0 {
+		numFile = o.sm.FirstFreeFile()
+		if numFile == 0 {
+			return false, fmt.Errorf("all files already used")
+		}
+	}
+	existed, err := o.sm.WriteFile(o.sd, numFile, contents, overwrite)
+	if err != nil {
+		return existed, err
+	}
+	if namedFile != numFile && symbol != "" {
+		if err := o.st.AddSymbol(symbol, 0xDF+uint16(numFile)); err != nil {
+			return existed, err
+		}
+		if err := o.sm.WriteSymbolTable(o.sd, o.st); err != nil {
+			return existed, err
 		}
 	}
 	return existed, nil
