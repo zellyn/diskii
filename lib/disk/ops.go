@@ -13,55 +13,6 @@ import (
 	"strings"
 )
 
-// Filetype describes the type of a file. It's byte-compatible with
-// the ProDOS/SOS filetype byte definitions in the range 00-FF.
-type Filetype int
-
-const (
-	FiletypeTypeless                Filetype = 0x00  //     | both   | Typeless file
-	FiletypeBadBlocks               Filetype = 0x01  //     | both   | Bad blocks file
-	FiletypeSOSPascalCode           Filetype = 0x02  //     | SOS    | PASCAL code file
-	FiletypeSOSPascalText           Filetype = 0x03  //     | SOS    | PASCAL text file
-	FiletypeASCIIText               Filetype = 0x04  // TXT | both   | ASCII text fil
-	FiletypeSOSPascalText2          Filetype = 0x05  //     | SOS    | PASCAL text file
-	FiletypeBinary                  Filetype = 0x06  // BIN | both   | Binary file
-	FiletypeFont                    Filetype = 0x07  //     | SOS    | Font file
-	FiletypeGraphicsScreen          Filetype = 0x08  //     | SOS    | Graphics screen file
-	FiletypeBusinessBASIC           Filetype = 0x09  //     | SOS    | Business BASIC program file
-	FiletypeBusinessBASICData       Filetype = 0x0A  //     | SOS    | Business BASIC data file
-	FiletypeSOSWordProcessor        Filetype = 0x0B  //     | SOS    | Word processor file
-	FiletypeSOSSystem               Filetype = 0x0C  //     | SOS    | SOS system file
-	FiletypeDirectory               Filetype = 0x0F  // DIR | both   | Directory file
-	FiletypeRPSData                 Filetype = 0x10  //     | SOS    | RPS data file
-	FiletypeRPSIndex                Filetype = 0x11  //     | SOS    | RPS index file
-	FiletypeAppleWorksDatabase      Filetype = 0x19  // ADB | ProDOS | AppleWorks data base file
-	FiletypeAppleWorksWordProcessor Filetype = 0x1A  // AWP | ProDOS | AppleWorks word processing file
-	FiletypeAppleWorksSpreadsheet   Filetype = 0x1B  // ASP | ProDOS | AppleWorks spreadsheet file
-	FiletypePascal                  Filetype = 0xEF  // PAS | ProDOS | ProDOS PASCAL file
-	FiletypeCommand                 Filetype = 0xF0  // CMD | ProDOS | Added command file
-	FiletypeUserDefinedF1           Filetype = 0xF1  //     | ProDOS | ProDOS user defined file types
-	FiletypeUserDefinedF2           Filetype = 0xF2  //     | ProDOS | ProDOS user defined file types
-	FiletypeUserDefinedF3           Filetype = 0xF3  //     | ProDOS | ProDOS user defined file types
-	FiletypeUserDefinedF4           Filetype = 0xF4  //     | ProDOS | ProDOS user defined file types
-	FiletypeUserDefinedF5           Filetype = 0xF5  //     | ProDOS | ProDOS user defined file types
-	FiletypeUserDefinedF6           Filetype = 0xF6  //     | ProDOS | ProDOS user defined file types
-	FiletypeUserDefinedF7           Filetype = 0xF7  //     | ProDOS | ProDOS user defined file types
-	FiletypeUserDefinedF8           Filetype = 0xF8  //     | ProDOS | ProDOS user defined file types
-	FiletypeIntegerBASIC            Filetype = 0xFA  // INT | ProDOS | Integer BASIC program file
-	FiletypeIntegerBASICVariables   Filetype = 0xFB  // IVR | ProDOS | Integer BASIC variables file
-	FiletypeApplesoftBASIC          Filetype = 0xFC  // BAS | ProDOS | Applesoft BASIC program file
-	FiletypeApplesoftBASICVariables Filetype = 0xFD  // VAR | ProDOS | Applesoft BASIC variables file
-	FiletypeRelocatable             Filetype = 0xFE  // REL | ProDOS | EDASM relocatable object module file
-	FiletypeSystem                  Filetype = 0xFF  // SYS | ProDOS | System file
-	FiletypeS                       Filetype = 0x100 // DOS 3.3 Type "S"
-	FiletypeA                       Filetype = 0x101 // DOS 3.3 Type "A"
-	FiletypeB                       Filetype = 0x102 // DOS 3.3 Type "B"
-	// | 0D-0E | SOS    | SOS reserved for future use
-	// | 12-18 | SOS    | SOS reserved for future use
-	// | 1C-BF | SOS    | SOS reserved for future use
-	// | C0-EE | ProDOS | ProDOS reserved for future use
-)
-
 // Descriptor describes a file's characteristics.
 type Descriptor struct {
 	Name    string
@@ -86,10 +37,10 @@ type Operator interface {
 	// Delete deletes a file by name. It returns true if the file was
 	// deleted, false if it didn't exist.
 	Delete(filename string) (bool, error)
-	// WriteRaw writes raw contents of a file by name. If the file exists
-	// and overwrite is false, it returns with an error. Otherwise it
-	// returns true if an existing file was overwritten.
-	WriteRaw(filename string, contents []byte, overwrite bool) (existed bool, err error)
+	// PutFile writes a file by name. If the file exists and overwrite
+	// is false, it returns with an error. Otherwise it returns true if
+	// an existing file was overwritten.
+	PutFile(filename string, fileInfo FileInfo, overwrite bool) (existed bool, err error)
 }
 
 // FileInfo represents a file descriptor plus the content.

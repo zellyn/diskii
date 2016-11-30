@@ -55,3 +55,10 @@ Beneath Apple ProDOS Table E.1
 | FD    | VAR | ProDOS | Applesoft BASIC variables file       |
 | FE    | REL | ProDOS | EDASM relocatable object module file |
 | FF    | SYS | ProDOS | System file                          |
+** NakedOS FHELLO
+20 40 03  JSR  NAKEDOS
+6D 01 DC  ADC  NKRDFILE
+2C 02 DF  BIT  ${filename}
+2C 00 E0  BIT  ${target page}
+F8        CLD
+4C 00 E0  JMP  ${target page}

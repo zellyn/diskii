@@ -657,11 +657,11 @@ func (o operator) Delete(filename string) (bool, error) {
 	return false, fmt.Errorf("%s does not implement Delete yet", operatorName)
 }
 
-// WriteRaw writes raw contents of a file by name. If the file exists
-// and overwrite is false, it returns with an error. Otherwise it
-// returns true if an existing file was overwritten.
-func (o operator) WriteRaw(filename string, contents []byte, overwrite bool) (bool, error) {
-	return false, fmt.Errorf("%s does not implement WriteRaw yet", operatorName)
+// PutFile writes a file by name. If the file exists and overwrite
+// is false, it returns with an error. Otherwise it returns true if
+// an existing file was overwritten.
+func (o operator) PutFile(filename string, fileInfo disk.FileInfo, overwrite bool) (existed bool, err error) {
+	return false, fmt.Errorf("%s does not implement PutFile yet", operatorName)
 }
 
 // operatorFactory is the factory that returns dos3 operators given
