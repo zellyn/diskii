@@ -12,6 +12,8 @@ import (
 	_ "github.com/zellyn/diskii/lib/supermon"
 )
 
+var shortnames bool // flag for whether to print short filenames
+
 // catalogCmd represents the cat command, used to catalog a disk or
 // directory.
 var catalogCmd = &cobra.Command{
@@ -29,6 +31,7 @@ var catalogCmd = &cobra.Command{
 
 func init() {
 	RootCmd.AddCommand(catalogCmd)
+	catalogCmd.Flags().BoolVarP(&shortnames, "shortnames", "s", false, "whether to print short filenames (only makes a difference on Super-Mon disks)")
 }
 
 // runCat performs the actual catalog logic.
@@ -56,7 +59,11 @@ func runCat(args []string) error {
 		return err
 	}
 	for _, fd := range fds {
-		fmt.Println(fd.Name)
+		if !shortnames && fd.Fullname != "" {
+			fmt.Println(fd.Fullname)
+		} else {
+			fmt.Println(fd.Name)
+		}
 	}
 	return nil
 }

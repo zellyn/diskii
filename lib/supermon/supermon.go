@@ -490,6 +490,15 @@ func NameForFile(file byte, symbols []Symbol) string {
 	return fmt.Sprintf("DF%02X", file)
 }
 
+// FullnameForFile returns a string representation of a filename:
+// either DFxx, or a DFxx:symbol, if one exists for that value.
+func FullnameForFile(file byte, symbols []Symbol) string {
+	if len(symbols) > 0 {
+		return fmt.Sprintf("DF%02X:%s", file, symbols[0].Name)
+	}
+	return fmt.Sprintf("DF%02X", file)
+}
+
 // parseAddressFilename parses filenames of the form DFxx and returns
 // the xx part. Invalid filenames result in 0.
 func parseAddressFilename(filename string) byte {
@@ -596,11 +605,12 @@ func (o operator) Catalog(subdir string) ([]disk.Descriptor, error) {
 		}
 		fileAddr := 0xDF00 + uint16(file)
 		descs = append(descs, disk.Descriptor{
-			Name:    NameForFile(file, o.symbols[fileAddr]),
-			Sectors: l,
-			Length:  l * 256,
-			Locked:  false,
-			Type:    disk.FiletypeBinary,
+			Name:     NameForFile(file, o.symbols[fileAddr]),
+			Fullname: FullnameForFile(file, o.symbols[fileAddr]),
+			Sectors:  l,
+			Length:   l * 256,
+			Locked:   false,
+			Type:     disk.FiletypeBinary,
 		})
 	}
 	return descs, nil

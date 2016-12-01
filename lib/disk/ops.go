@@ -15,11 +15,12 @@ import (
 
 // Descriptor describes a file's characteristics.
 type Descriptor struct {
-	Name    string
-	Sectors int
-	Length  int
-	Locked  bool
-	Type    Filetype
+	Name     string
+	Fullname string // If there's a more complete filename (eg. Super-Mon), put it here.
+	Sectors  int
+	Length   int
+	Locked   bool
+	Type     Filetype
 }
 
 // Operator is the interface that can operate on disks.
