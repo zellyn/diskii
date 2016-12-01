@@ -3,7 +3,7 @@ diskii
 
 **Note:** diskii is not stable yet! I don't expect to remove
 functionality, but I'm still experimenting with the command syntax and
-organization, so don't get too comfy with it yet.
+organization, so don't get too comfy with it.
 
 diskii is a commandline tool for working with Apple II disk images.
 
