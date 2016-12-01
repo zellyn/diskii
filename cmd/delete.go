@@ -12,6 +12,8 @@ import (
 	_ "github.com/zellyn/diskii/lib/supermon"
 )
 
+var missingok bool // flag for whether to consider deleting a nonexistent file okay
+
 // deleteCmd represents the delete command, used to delete a file.
 var deleteCmd = &cobra.Command{
 	Use:   "delete",
@@ -30,6 +32,7 @@ delete disk-image.dsk HELLO
 
 func init() {
 	RootCmd.AddCommand(deleteCmd)
+	deleteCmd.Flags().BoolVarP(&missingok, "missingok", "f", false, "if true, don't consider deleting a nonexistent file an error")
 }
 
 // runDelete performs the actual delete logic.
@@ -49,8 +52,7 @@ func runDelete(args []string) error {
 	if err != nil {
 		return err
 	}
-	if !deleted {
-		// TODO(zellyn): implement -f flag to not warn on nonexistence.
+	if !deleted && !missingok {
 		return fmt.Errorf("file %q not found", args[1])
 	}
 	f, err := os.Create(args[0])

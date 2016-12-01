@@ -40,7 +40,7 @@ type Operator interface {
 	// PutFile writes a file by name. If the file exists and overwrite
 	// is false, it returns with an error. Otherwise it returns true if
 	// an existing file was overwritten.
-	PutFile(filename string, fileInfo FileInfo, overwrite bool) (existed bool, err error)
+	PutFile(fileInfo FileInfo, overwrite bool) (existed bool, err error)
 }
 
 // FileInfo represents a file descriptor plus the content.

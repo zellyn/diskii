@@ -662,7 +662,7 @@ func (o operator) Delete(filename string) (bool, error) {
 // PutFile writes a file by name. If the file exists and overwrite
 // is false, it returns with an error. Otherwise it returns true if
 // an existing file was overwritten.
-func (o operator) PutFile(filename string, fileInfo disk.FileInfo, overwrite bool) (existed bool, err error) {
+func (o operator) PutFile(fileInfo disk.FileInfo, overwrite bool) (existed bool, err error) {
 	if fileInfo.Descriptor.Type != disk.FiletypeBinary {
 		return false, fmt.Errorf("%s: only binary file type supported", operatorName)
 	}
@@ -670,7 +670,7 @@ func (o operator) PutFile(filename string, fileInfo disk.FileInfo, overwrite boo
 		return false, fmt.Errorf("mismatch between FileInfo.Descriptor.Length (%d) and actual length of FileInfo.Data field (%d)", fileInfo.Descriptor.Length, len(fileInfo.Data))
 	}
 
-	numFile, namedFile, symbol, err := o.st.FilesForCompoundName(filename)
+	numFile, namedFile, symbol, err := o.st.FilesForCompoundName(fileInfo.Descriptor.Name)
 	if err != nil {
 		return false, err
 	}

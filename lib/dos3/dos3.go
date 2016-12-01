@@ -374,9 +374,9 @@ func (fd FileDesc) descriptor() disk.Descriptor {
 	case FiletypeRelocatable: // RELOCATABLE object module file
 		desc.Type = disk.FiletypeRelocatable
 	case FiletypeA: // A type file
-		desc.Type = disk.FiletypeA
+		desc.Type = disk.FiletypeNewA
 	case FiletypeB: // B type file
-		desc.Type = disk.FiletypeB
+		desc.Type = disk.FiletypeNewB
 	}
 	return desc
 }
@@ -660,7 +660,7 @@ func (o operator) Delete(filename string) (bool, error) {
 // PutFile writes a file by name. If the file exists and overwrite
 // is false, it returns with an error. Otherwise it returns true if
 // an existing file was overwritten.
-func (o operator) PutFile(filename string, fileInfo disk.FileInfo, overwrite bool) (existed bool, err error) {
+func (o operator) PutFile(fileInfo disk.FileInfo, overwrite bool) (existed bool, err error) {
 	return false, fmt.Errorf("%s does not implement PutFile yet", operatorName)
 }
 
