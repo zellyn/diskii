@@ -13,6 +13,18 @@ import (
 
 const testDisk = "testdata/chacha20.dsk"
 
+const cities = `It was the best of times, it was the worst of times, it was the age of wisdom, it was the age of foolishness, it was the epoch of belief, it was the epoch of incredulity, it was the season of Light, it was the season of Darkness, it was the spring of hope, it was the winter of despair, we had everything before us, we had nothing before us, we were all going direct to Heaven, we were all going direct the other way - in short, the period was so far like the present period, that some of its noisiest authorities insisted on its being received, for good or for evil, in the superlative degree of comparison only.`
+
+// The extra newline pads us to 256 bytes…
+const hamlet = `To be, or not to be, that is the question:
+Whether 'tis Nobler in the mind to suffer
+The Slings and Arrows of outrageous Fortune,
+Or to take Arms against a Sea of troubles,
+And by opposing end them: to die, to sleep
+No more; and by a sleep, to say we end
+
+`
+
 // loadSectorMap loads a sector map for the disk image contained in
 // filename. It returns the sector map and a sector disk.
 func loadSectorMap(filename string) (SectorMap, disk.SectorDisk, error) {
@@ -127,15 +139,7 @@ func TestGetFile(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := string(file.Data)
-	// The extra newline pads us to 256 bytes…
-	want := `To be, or not to be, that is the question:
-Whether 'tis Nobler in the mind to suffer
-The Slings and Arrows of outrageous Fortune,
-Or to take Arms against a Sea of troubles,
-And by opposing end them: to die, to sleep
-No more; and by a sleep, to say we end
-
-`
+	want := hamlet
 	if got != want {
 		t.Errorf("Incorrect result for GetFile(\"TOBE\"): want %q; got %q", want, got)
 	}
@@ -203,5 +207,44 @@ func TestReadWriteSymbolTable(t *testing.T) {
 	if !reflect.DeepEqual(st1, st2) {
 		pretty.Ldiff(t, st1, st2)
 		t.Fatal("Saved and reloaded symbol table differs from original symbol table")
+	}
+}
+
+// TestPutFile tests the creation of a file, using the Operator
+// interface.
+func TestPutFile(t *testing.T) {
+	sd, err := disk.Open(testDisk)
+	if err != nil {
+		t.Fatal(err)
+	}
+	op, err := disk.OperatorFor(sd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	contents := []byte(cities)
+	fileInfo := disk.FileInfo{
+		Descriptor: disk.Descriptor{
+			Name:   "FNEWFILE",
+			Length: len(contents),
+			Type:   disk.FiletypeBinary,
+		},
+		Data: contents,
+	}
+	existed, err := op.PutFile(fileInfo, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if existed {
+		t.Errorf("want existed=%v; got %v", false, existed)
+	}
+
+	fds, err := op.Catalog("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	last := fds[len(fds)-1]
+	want := "DF0B:FNEWFILE"
+	if got := last.Fullname; got != want {
+		t.Fatalf("Want last file on disk's FullName=%q; got %q", want, got)
 	}
 }

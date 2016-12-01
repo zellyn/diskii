@@ -242,6 +242,10 @@ type Symbol struct {
 	Link int
 }
 
+func (s Symbol) String() string {
+	return fmt.Sprintf("{%s:%04X:%d}", s.Name, s.Address, s.Link)
+}
+
 // decodeSymbol decodes a Super-Mon encoded symbol table entry,
 // returning the string representation.
 func decodeSymbol(five []byte, extra byte) string {
@@ -420,6 +424,17 @@ func (st SymbolTable) SymbolsByAddress() map[uint16][]Symbol {
 	return result
 }
 
+// SymbolsForAddress returns a slice of symbols for a given address.
+func (st SymbolTable) SymbolsForAddress(address uint16) []Symbol {
+	result := []Symbol{}
+	for _, symbol := range st {
+		if symbol.Address == address {
+			result = append(result, symbol)
+		}
+	}
+	return result
+}
+
 // DeleteSymbol deletes an existing symbol. Returns true if the named
 // symbol was found.
 func (st SymbolTable) DeleteSymbol(name string) bool {
@@ -483,7 +498,8 @@ func (st SymbolTable) AddSymbol(name string, address uint16) error {
 
 // NameForFile returns a string representation of a filename:
 // either DFxx, or a symbol, if one exists for that value.
-func NameForFile(file byte, symbols []Symbol) string {
+func NameForFile(file byte, st SymbolTable) string {
+	symbols := st.SymbolsForAddress(0xDF00 + uint16(file))
 	if len(symbols) > 0 {
 		return symbols[0].Name
 	}
@@ -492,7 +508,8 @@ func NameForFile(file byte, symbols []Symbol) string {
 
 // FullnameForFile returns a string representation of a filename:
 // either DFxx, or a DFxx:symbol, if one exists for that value.
-func FullnameForFile(file byte, symbols []Symbol) string {
+func FullnameForFile(file byte, st SymbolTable) string {
+	symbols := st.SymbolsForAddress(0xDF00 + uint16(file))
 	if len(symbols) > 0 {
 		return fmt.Sprintf("DF%02X:%s", file, symbols[0].Name)
 	}
@@ -570,10 +587,9 @@ func (st SymbolTable) FilesForCompoundName(filename string) (numFile byte, named
 // operator is a disk.Operator - an interface for performing
 // high-level operations on files and directories.
 type operator struct {
-	sd      disk.SectorDisk
-	sm      SectorMap
-	st      SymbolTable
-	symbols map[uint16][]Symbol
+	sd disk.SectorDisk
+	sm SectorMap
+	st SymbolTable
 }
 
 var _ disk.Operator = operator{}
@@ -603,10 +619,9 @@ func (o operator) Catalog(subdir string) ([]disk.Descriptor, error) {
 		if l == 0 {
 			continue
 		}
-		fileAddr := 0xDF00 + uint16(file)
 		descs = append(descs, disk.Descriptor{
-			Name:     NameForFile(file, o.symbols[fileAddr]),
-			Fullname: FullnameForFile(file, o.symbols[fileAddr]),
+			Name:     NameForFile(file, o.st),
+			Fullname: FullnameForFile(file, o.st),
 			Sectors:  l,
 			Length:   l * 256,
 			Locked:   false,
@@ -630,7 +645,7 @@ func (o operator) GetFile(filename string) (disk.FileInfo, error) {
 		return disk.FileInfo{}, fmt.Errorf("file DF%02x not fount", file)
 	}
 	desc := disk.Descriptor{
-		Name:    NameForFile(file, o.symbols[0xDF00+uint16(file)]),
+		Name:    NameForFile(file, o.st),
 		Sectors: len(data) / 256,
 		Length:  len(data),
 		Locked:  false,
@@ -684,6 +699,7 @@ func (o operator) PutFile(fileInfo disk.FileInfo, overwrite bool) (existed bool,
 	if err != nil {
 		return false, err
 	}
+	fmt.Printf("PLUGH: numFile: %v, namedFile: %v, symbol: %v\n", numFile, namedFile, symbol)
 	if symbol != "" {
 		if o.st == nil {
 			return false, fmt.Errorf("cannot use symbolic names on disks without valid symbol tables in files 0x03 and 0x04")
@@ -703,9 +719,10 @@ func (o operator) PutFile(fileInfo disk.FileInfo, overwrite bool) (existed bool,
 		return existed, err
 	}
 	if namedFile != numFile && symbol != "" {
-		if err := o.st.AddSymbol(symbol, 0xDF+uint16(numFile)); err != nil {
+		if err := o.st.AddSymbol(symbol, 0xDF00+uint16(numFile)); err != nil {
 			return existed, err
 		}
+		fmt.Println("PLUGH: about to write symbol table: %v", o.st)
 		if err := o.sm.WriteSymbolTable(o.sd, o.st); err != nil {
 			return existed, err
 		}
@@ -729,7 +746,6 @@ func operatorFactory(sd disk.SectorDisk) (disk.Operator, error) {
 	st, err := sm.ReadSymbolTable(sd)
 	if err == nil {
 		op.st = st
-		op.symbols = st.SymbolsByAddress()
 	}
 
 	return op, nil
