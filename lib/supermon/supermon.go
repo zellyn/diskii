@@ -435,6 +435,17 @@ func (st SymbolTable) SymbolsForAddress(address uint16) []Symbol {
 	return result
 }
 
+// ByName returns the address of the named symbol, or 0 if it's not in
+// the symbol table.
+func (st SymbolTable) ByName(name string) uint16 {
+	for _, symbol := range st {
+		if strings.EqualFold(name, symbol.Name) {
+			return symbol.Address
+		}
+	}
+	return 0
+}
+
 // DeleteSymbol deletes an existing symbol. Returns true if the named
 // symbol was found.
 func (st SymbolTable) DeleteSymbol(name string) bool {
@@ -548,6 +559,50 @@ func (st SymbolTable) FileForName(filename string) (byte, error) {
 	}
 
 	return 0, errors.FileNotFoundf("filename %q not found", filename)
+}
+
+// ParseCompoundSymbol parses an address, symbol, or compound of both
+// in the forms XXXX, symbolname, or XXXX:symbolname.
+func (st SymbolTable) ParseCompoundSymbol(name string) (address uint16, symAddress uint16, symbol string, err error) {
+	if name == "" {
+		return 0, 0, "", fmt.Errorf("expected symbol name, got %q", name)
+	}
+	parts := strings.Split(name, ":")
+	if len(parts) > 2 {
+		return 0, 0, "", fmt.Errorf("more than one colon in compound address:symbol: %q", name)
+	}
+	if len(parts) == 1 {
+		// If there's a symbol by that name, use it.
+		if addr := st.ByName(name); addr != 0 {
+			return 0, addr, name, nil
+		}
+		// If we can parse it as an address, do so.
+		if addr, err := strconv.ParseUint(name, 16, 16); err == nil {
+			return uint16(addr), 0, "", nil
+		}
+		// If it's a valid symbol name, assume that's what it is.
+		if _, err := encodeSymbol(name); err != nil {
+			return 0, 0, name, nil
+		}
+		return 0, 0, "", fmt.Errorf("%q is not a valid symbol name or address")
+	}
+
+	if parts[0] == "" {
+		return 0, 0, "", fmt.Errorf("empty address part of compound address:symbol: %q", name)
+	}
+	if parts[1] == "" {
+		return 0, 0, "", fmt.Errorf("empty symbol part of compound address:symbol: %q", name)
+	}
+
+	// If we can parse it as an address, do so.
+	addr, err := strconv.ParseUint(parts[0], 16, 16)
+	if err != nil {
+		return 0, 0, "", fmt.Errorf("error parsing address part of %q: %v", name, err)
+	}
+	if _, err := encodeSymbol(parts[1]); err != nil {
+		return 0, 0, name, err
+	}
+	return uint16(addr), st.ByName(parts[1]), parts[1], nil
 }
 
 // FilesForCompoundName parses a complex filename of the form DFxx,
