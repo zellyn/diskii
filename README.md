@@ -86,3 +86,4 @@ will be likely to get priority.
 - https://github.com/dmolony/DiskBrowser
 - https://github.com/deater/dos33fsprogs
 - https://github.com/jtauber/a2disk
+- https://github.com/datajerk/c2d
