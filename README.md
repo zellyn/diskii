@@ -77,8 +77,9 @@ will be likely to get priority.
 
 ### Related tools
 
-- http://a2ciderpress.com/
-- http://applecommander.sourceforge.net/
+- http://a2ciderpress.com/ - the great grandaddy of them all. Windows only, unless you Wine
+- http://applecommander.sourceforge.net/ - the commandline, cross-platform alternative to CiderPress
+
 - https://github.com/cybernesto/dsktool.rb
 - https://github.com/cmosher01/Apple-II-Disk-Tools
 - https://github.com/madsen/perl-libA2
@@ -87,3 +88,5 @@ will be likely to get priority.
 - https://github.com/deater/dos33fsprogs
 - https://github.com/jtauber/a2disk
 - https://github.com/datajerk/c2d
+- https://github.com/thecompu/Driv3rs - A Python Script to work with Apple III SOS DSK files
+- http://www.callapple.org/software/an-a-p-p-l-e-review-shink-fit-x-for-mac-os-x
