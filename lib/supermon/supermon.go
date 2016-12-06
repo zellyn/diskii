@@ -754,7 +754,6 @@ func (o operator) PutFile(fileInfo disk.FileInfo, overwrite bool) (existed bool,
 	if err != nil {
 		return false, err
 	}
-	fmt.Printf("PLUGH: numFile: %v, namedFile: %v, symbol: %v\n", numFile, namedFile, symbol)
 	if symbol != "" {
 		if o.st == nil {
 			return false, fmt.Errorf("cannot use symbolic names on disks without valid symbol tables in files 0x03 and 0x04")
@@ -777,7 +776,6 @@ func (o operator) PutFile(fileInfo disk.FileInfo, overwrite bool) (existed bool,
 		if err := o.st.AddSymbol(symbol, 0xDF00+uint16(numFile)); err != nil {
 			return existed, err
 		}
-		fmt.Println("PLUGH: about to write symbol table: %v", o.st)
 		if err := o.sm.WriteSymbolTable(o.sd, o.st); err != nil {
 			return existed, err
 		}

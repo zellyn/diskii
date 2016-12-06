@@ -55,10 +55,33 @@ Beneath Apple ProDOS Table E.1
 | FD    | VAR | ProDOS | Applesoft BASIC variables file       |
 | FE    | REL | ProDOS | EDASM relocatable object module file |
 | FF    | SYS | ProDOS | System file                          |
-** NakedOS FHELLO
+** NakedOS FHELLO + FWORLD
+This is the simplest possible example of a FHELLO program that loads
+another program (FWORLD) at $6000, then jumps to it. The placeholder
+FWORLD below clears the screen, prints "HELLO WORLD", then spins
+forever.
+
+*** FHELLO
 20 40 03  JSR  NAKEDOS
 6D 01 DC  ADC  NKRDFILE
 2C 02 DF  BIT  ${filename}
-2C 00 E0  BIT  ${target page}
+2C 00 60  BIT  ${target page}
 F8        CLD
-4C 00 E0  JMP  ${target page}
+4C 00 60  JMP  ${target page}
+
+*** FWORLD
+6000-G  20 58 FC  JSR  HOME
+6003-H  A2 00     LDX  #00
+6005-I  BD 13 60  LDA  -O,X
+6008-J  F0 06     BEQ  -N
+600A-K  20 ED FD  JSR  COUT
+600D-L  E8        INX
+600E-M  D0 F5     BNE  -I
+6010-N  4C 10 60  JMP  *
+6013-          C8 C5 CC CC CF     HELLO
+6018- AC A0 D7 CF D2 CC C4 00  , WORLD.
+
+*** diskii commands
+
+echo -n -e '\x20\x40\x03\x6D\x01\xDC\x2C\x02\xDF\x2C\x00\x60\xF8\x4C\x00\x60' | diskii put -f ./lib/supermon/testdata/chacha20.dsk DF01:FHELLO -
+echo -n -e '\x20\x58\xFC\xA2\x00\xBD\x13\x60\xF0\x06\x20\xED\xFD\xE8\xD0\xF5\x4C\x10\x60\xC8\xC5\xCC\xCC\xCF\xAC\xA0\xD7\xCF\xD2\xCC\xC4\x00' | diskii put -f ./lib/supermon/testdata/chacha20.dsk DF02:FWORLD -
