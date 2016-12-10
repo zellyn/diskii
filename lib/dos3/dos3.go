@@ -19,6 +19,7 @@ const (
 	VTOCSector = 0
 )
 
+// DiskSector represents a track and sector.
 type DiskSector struct {
 	Track  byte
 	Sector byte
@@ -185,6 +186,8 @@ func (v *VTOC) FromSector(data []byte) error {
 	return nil
 }
 
+// DefaultVTOC returns a new, empty VTOC with values set to their
+// defaults.
 func DefaultVTOC() VTOC {
 	v := VTOC{
 		CatalogTrack:           0x11,
@@ -253,9 +256,9 @@ func (cs *CatalogSector) FromSector(data []byte) error {
 // Filetype is the type for dos 3.3 filetype+locked status byte.
 type Filetype byte
 
+// The DOS3 filetypes.
 const (
-	// Hex 80+file type - file is locked,
-	// Hex 00+file type - file is not locked.
+	// FiletypeLocked is just setting the high bit on other file types.
 	FiletypeLocked Filetype = 0x80
 
 	FiletypeText        Filetype = 0x00 // Text file
@@ -268,8 +271,10 @@ const (
 	FiletypeB           Filetype = 0x40 // B type file
 )
 
+// FileDescStatus is the type used to mark file descriptor status.
 type FileDescStatus int
 
+// The three actual file descriptor status values.
 const (
 	FileDescStatusNormal FileDescStatus = iota
 	FileDescStatusDeleted

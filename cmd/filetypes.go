@@ -8,8 +8,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/zellyn/diskii/lib/disk"
-	_ "github.com/zellyn/diskii/lib/dos3"
-	_ "github.com/zellyn/diskii/lib/supermon"
 )
 
 var all bool // flag for whether to show all filetypes

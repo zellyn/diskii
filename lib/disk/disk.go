@@ -11,8 +11,9 @@ import (
 	"strings"
 )
 
+// Various DOS33 disk characteristics.
 const (
-	DOS33Tracks  = 35 // Tracks per disk
+	DOS33Tracks  = 35
 	DOS33Sectors = 16 // Sectors per track
 	// DOS33DiskBytes is the number of bytes on a DOS 3.3 disk.
 	DOS33DiskBytes  = 143360             // 35 tracks * 16 sectors * 256 bytes
@@ -39,6 +40,8 @@ type TrackSector struct {
 	Sector byte
 }
 
+// SectorDisk is the interface use to read and write disks by physical
+// (matches sector header) sector number.
 type SectorDisk interface {
 	// ReadPhysicalSector reads a single physical sector from the disk. It
 	// always returns 256 byes.
@@ -54,6 +57,8 @@ type SectorDisk interface {
 	Write(io.Writer) (int, error)
 }
 
+// LogicalSectorDisk is the interface used to read and write a disk by
+// *logical* sector number.
 type LogicalSectorDisk interface {
 	// ReadLogicalSector reads a single logical sector from the disk. It
 	// always returns 256 byes.
@@ -78,6 +83,8 @@ type MappedDisk struct {
 
 var _ LogicalSectorDisk = MappedDisk{}
 
+// NewMappedDisk returns a MappedDisk with the given
+// logical-to-physical sector mapping.
 func NewMappedDisk(sd SectorDisk, logicalToPhysical []byte) (MappedDisk, error) {
 	if logicalToPhysical != nil && len(logicalToPhysical) != int(sd.Sectors()) {
 		return MappedDisk{}, fmt.Errorf("NewMappedDisk called on a disk image with %d sectors per track, but a mapping of length %d", sd.Sectors(), len(logicalToPhysical))

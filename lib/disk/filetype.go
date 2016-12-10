@@ -11,6 +11,7 @@ import "fmt"
 // the ProDOS/SOS filetype byte definitions in the range 00-FF.
 type Filetype int
 
+// Filetypes.
 const (
 	FiletypeTypeless                Filetype = 0x00  //     | both   | Typeless file
 	FiletypeBadBlocks               Filetype = 0x01  //     | both   | Bad blocks file

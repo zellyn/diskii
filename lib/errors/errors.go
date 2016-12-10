@@ -9,7 +9,8 @@ import (
 	"fmt"
 )
 
-// Copy of errors.New, so you this package can be imported instead.
+// New is a copy of errors.New, so this package can be imported as a
+// replacement.
 func New(text string) error {
 	return errors.New(text)
 }

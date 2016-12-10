@@ -85,6 +85,9 @@ func TestReadCatalog(t *testing.T) {
 		t.Fatal(err)
 	}
 	fds, deleted, err := ReadCatalog(dsk)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	fdsWant := []struct {
 		locked bool

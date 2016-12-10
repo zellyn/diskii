@@ -29,7 +29,7 @@ func LoadDSK(filename string) (DSK, error) {
 	}
 	// TODO(zellyn): handle 13-sector disks.
 	if len(bb) != DOS33DiskBytes {
-		return DSK{}, fmt.Errorf("Expected file %q to contain %d bytes, but got %d.", filename, DOS33DiskBytes, len(bb))
+		return DSK{}, fmt.Errorf("expected file %q to contain %d bytes, but got %d", filename, DOS33DiskBytes, len(bb))
 	}
 	return DSK{
 		data:             bb,

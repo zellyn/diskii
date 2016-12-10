@@ -473,7 +473,7 @@ func (st SymbolTable) DeleteSymbol(name string) bool {
 // already exists with a different address, it deletes it first.
 func (st SymbolTable) AddSymbol(name string, address uint16) error {
 	if address == 0 {
-		return fmt.Errorf("cannot set symbol %q to address 0")
+		return fmt.Errorf("cannot set symbol %q to address 0", name)
 	}
 	hash := addrHash(address)
 	pos := -1
@@ -584,7 +584,7 @@ func (st SymbolTable) ParseCompoundSymbol(name string) (address uint16, symAddre
 		if _, err := encodeSymbol(name); err != nil {
 			return 0, 0, name, nil
 		}
-		return 0, 0, "", fmt.Errorf("%q is not a valid symbol name or address")
+		return 0, 0, "", fmt.Errorf("%q is not a valid symbol name or address", name)
 	}
 
 	if parts[0] == "" {
@@ -630,7 +630,7 @@ func (st SymbolTable) FilesForCompoundName(filename string) (numFile byte, named
 		return 0, 0, "", fmt.Errorf("invalid file number: %q", parts[0])
 	}
 	if numFile2 := parseAddressFilename(parts[1]); numFile2 != 0 {
-		return 0, 0, "", fmt.Errorf("cannot valid file number (%q) as a filename")
+		return 0, 0, "", fmt.Errorf("cannot use valid file number (%q) as a filename", parts[1])
 	}
 	namedFile, err = st.FileForName(parts[1])
 	if err != nil {

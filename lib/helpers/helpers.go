@@ -9,6 +9,8 @@ import (
 	"os"
 )
 
+// FileContentsOrStdIn returns the contents of a file, unless the file
+// is "-", in which case it reads from stdin.
 func FileContentsOrStdIn(s string) ([]byte, error) {
 	if s == "-" {
 		return ioutil.ReadAll(os.Stdin)

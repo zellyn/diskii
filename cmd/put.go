@@ -8,9 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/zellyn/diskii/lib/disk"
-	_ "github.com/zellyn/diskii/lib/dos3"
 	"github.com/zellyn/diskii/lib/helpers"
-	_ "github.com/zellyn/diskii/lib/supermon"
 )
 
 var filetypeName string // flag for file type
