@@ -639,44 +639,44 @@ func (st SymbolTable) FilesForCompoundName(filename string) (numFile byte, named
 	return numFile, namedFile, parts[1], nil
 }
 
-// operator is a disk.Operator - an interface for performing
+// Operator is a disk.Operator - an interface for performing
 // high-level operations on files and directories.
-type operator struct {
-	sd disk.SectorDisk
-	sm SectorMap
-	st SymbolTable
+type Operator struct {
+	SD disk.SectorDisk
+	SM SectorMap
+	ST SymbolTable
 }
 
-var _ disk.Operator = operator{}
+var _ disk.Operator = Operator{}
 
 // operatorName is the keyword name for the operator that undestands
 // NakedOS/Super-Mon disks.
 const operatorName = "nakedos"
 
-// Name returns the name of the operator.
-func (o operator) Name() string {
+// Name returns the name of the Operator.
+func (o Operator) Name() string {
 	return operatorName
 }
 
 // HasSubdirs returns true if the underlying operating system on the
 // disk allows subdirectories.
-func (o operator) HasSubdirs() bool {
+func (o Operator) HasSubdirs() bool {
 	return false
 }
 
 // Catalog returns a catalog of disk entries. subdir should be empty
 // for operating systems that do not support subdirectories.
-func (o operator) Catalog(subdir string) ([]disk.Descriptor, error) {
+func (o Operator) Catalog(subdir string) ([]disk.Descriptor, error) {
 	var descs []disk.Descriptor
-	sectorsByFile := o.sm.SectorsByFile()
+	sectorsByFile := o.SM.SectorsByFile()
 	for file := byte(1); file < FileReserved; file++ {
 		l := len(sectorsByFile[file])
 		if l == 0 {
 			continue
 		}
 		descs = append(descs, disk.Descriptor{
-			Name:     NameForFile(file, o.st),
-			Fullname: FullnameForFile(file, o.st),
+			Name:     NameForFile(file, o.ST),
+			Fullname: FullnameForFile(file, o.ST),
 			Sectors:  l,
 			Length:   l * 256,
 			Locked:   false,
@@ -687,12 +687,12 @@ func (o operator) Catalog(subdir string) ([]disk.Descriptor, error) {
 }
 
 // GetFile retrieves a file by name.
-func (o operator) GetFile(filename string) (disk.FileInfo, error) {
-	file, err := o.st.FileForName(filename)
+func (o Operator) GetFile(filename string) (disk.FileInfo, error) {
+	file, err := o.ST.FileForName(filename)
 	if err != nil {
 		return disk.FileInfo{}, err
 	}
-	data, err := o.sm.ReadFile(o.sd, file)
+	data, err := o.SM.ReadFile(o.SD, file)
 	if err != nil {
 		return disk.FileInfo{}, fmt.Errorf("error reading file DF%02x: %v", file, err)
 	}
@@ -700,7 +700,7 @@ func (o operator) GetFile(filename string) (disk.FileInfo, error) {
 		return disk.FileInfo{}, fmt.Errorf("file DF%02x not fount", file)
 	}
 	desc := disk.Descriptor{
-		Name:    NameForFile(file, o.st),
+		Name:    NameForFile(file, o.ST),
 		Sectors: len(data) / 256,
 		Length:  len(data),
 		Locked:  false,
@@ -718,20 +718,20 @@ func (o operator) GetFile(filename string) (disk.FileInfo, error) {
 
 // Delete deletes a file by name. It returns true if the file was
 // deleted, false if it didn't exist.
-func (o operator) Delete(filename string) (bool, error) {
-	file, err := o.st.FileForName(filename)
+func (o Operator) Delete(filename string) (bool, error) {
+	file, err := o.ST.FileForName(filename)
 	if err != nil {
 		return false, err
 	}
-	existed := len(o.sm.SectorsForFile(file)) > 0
-	o.sm.Delete(file)
-	if err := o.sm.Persist(o.sd); err != nil {
+	existed := len(o.SM.SectorsForFile(file)) > 0
+	o.SM.Delete(file)
+	if err := o.SM.Persist(o.SD); err != nil {
 		return existed, err
 	}
-	if o.st != nil {
-		changed := o.st.DeleteSymbol(filename)
+	if o.ST != nil {
+		changed := o.ST.DeleteSymbol(filename)
 		if changed {
-			if err := o.sm.WriteSymbolTable(o.sd, o.st); err != nil {
+			if err := o.SM.WriteSymbolTable(o.SD, o.ST); err != nil {
 				return existed, err
 			}
 		}
@@ -742,7 +742,7 @@ func (o operator) Delete(filename string) (bool, error) {
 // PutFile writes a file by name. If the file exists and overwrite
 // is false, it returns with an error. Otherwise it returns true if
 // an existing file was overwritten.
-func (o operator) PutFile(fileInfo disk.FileInfo, overwrite bool) (existed bool, err error) {
+func (o Operator) PutFile(fileInfo disk.FileInfo, overwrite bool) (existed bool, err error) {
 	if fileInfo.Descriptor.Type != disk.FiletypeBinary {
 		return false, fmt.Errorf("%s: only binary file type supported", operatorName)
 	}
@@ -750,12 +750,12 @@ func (o operator) PutFile(fileInfo disk.FileInfo, overwrite bool) (existed bool,
 		return false, fmt.Errorf("mismatch between FileInfo.Descriptor.Length (%d) and actual length of FileInfo.Data field (%d)", fileInfo.Descriptor.Length, len(fileInfo.Data))
 	}
 
-	numFile, namedFile, symbol, err := o.st.FilesForCompoundName(fileInfo.Descriptor.Name)
+	numFile, namedFile, symbol, err := o.ST.FilesForCompoundName(fileInfo.Descriptor.Name)
 	if err != nil {
 		return false, err
 	}
 	if symbol != "" {
-		if o.st == nil {
+		if o.ST == nil {
 			return false, fmt.Errorf("cannot use symbolic names on disks without valid symbol tables in files 0x03 and 0x04")
 		}
 		if _, err := encodeSymbol(symbol); err != nil {
@@ -763,20 +763,20 @@ func (o operator) PutFile(fileInfo disk.FileInfo, overwrite bool) (existed bool,
 		}
 	}
 	if numFile == 0 {
-		numFile = o.sm.FirstFreeFile()
+		numFile = o.SM.FirstFreeFile()
 		if numFile == 0 {
 			return false, fmt.Errorf("all files already used")
 		}
 	}
-	existed, err = o.sm.WriteFile(o.sd, numFile, fileInfo.Data, overwrite)
+	existed, err = o.SM.WriteFile(o.SD, numFile, fileInfo.Data, overwrite)
 	if err != nil {
 		return existed, err
 	}
 	if namedFile != numFile && symbol != "" {
-		if err := o.st.AddSymbol(symbol, 0xDF00+uint16(numFile)); err != nil {
+		if err := o.ST.AddSymbol(symbol, 0xDF00+uint16(numFile)); err != nil {
 			return existed, err
 		}
-		if err := o.sm.WriteSymbolTable(o.sd, o.st); err != nil {
+		if err := o.SM.WriteSymbolTable(o.SD, o.ST); err != nil {
 			return existed, err
 		}
 	}
@@ -794,11 +794,11 @@ func operatorFactory(sd disk.SectorDisk) (disk.Operator, error) {
 		return nil, err
 	}
 
-	op := operator{sd: sd, sm: sm}
+	op := Operator{SD: sd, SM: sm}
 
 	st, err := sm.ReadSymbolTable(sd)
 	if err == nil {
-		op.st = st
+		op.ST = st
 	}
 
 	return op, nil

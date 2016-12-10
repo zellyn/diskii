@@ -34,7 +34,7 @@ func init() {
 	// applesoftCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
 
-// ----- applesoft decode commane -------------------------------------------
+// ----- applesoft decode command -------------------------------------------
 
 var location uint16      // flag for starting location in memory
 var rawControlCodes bool // flag for whether to skip escaping control codes
