@@ -5,14 +5,17 @@ diskii
 functionality, but I'm still experimenting with the command syntax and
 organization, so don't get too comfy with it.
 
-diskii is a commandline tool for working with Apple II disk images.
+diskii-the-tool is a commandline tool for working with Apple II disk
+images. Given that
+[AppleCommander](http://applecommander.sourceforge.net/) already does
+everything, it's not terribly necessary. It is, however, mine. Minor
+benefits (right now) are binaries you can copy around (no Java
+needed), and support for Super-Mon symbol tables on NakedOS disks.
 
-It is also a library of code that can be used by other Go programs.
+diskii-the-library is probably more useful: a library of
+disk-image-manipulation code that can be used by other Go programs.
 
-Its major advantage is that it's written in Go, hence
-cross-platform.
-
-Its major disadvantage is that it mostly doesn't exist yet.
+diskii's major disadvantage is that it mostly doesn't exist yet.
 
 [![Build Status](https://travis-ci.org/zellyn/diskii.svg?branch=master)](https://travis-ci.org/zellyn/diskii)
 [![Report Card](https://goreportcard.com/badge/github.com/zellyn/diskii)](https://goreportcard.com/report/github.com/zellyn/diskii)
@@ -69,8 +72,8 @@ will be likely to get priority.
 - [x] Build per-platform binaries for Linux, MacOS, Windows.
 - [ ] Implement `GetFile` for DOS 3.3
 - [ ] Add and implement the `-l` flag for `ls`
-- [ ] Add `Delete` to the `disk.Operator` interface
-  - [ ] Implement it for supermon
+- [x] Add `Delete` to the `disk.Operator` interface
+  - [x] Implement it for Super-Mon
   - [ ] Implement it for DOS 3.3
 - [ ] Make 13-sector DOS disks work
 - [ ] Read/write nybble formats

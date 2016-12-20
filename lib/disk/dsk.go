@@ -40,6 +40,17 @@ func LoadDSK(filename string) (DSK, error) {
 	}, nil
 }
 
+// Empty creates a .dsk image that is all zeros.
+func Empty() DSK {
+	return DSK{
+		data:             make([]byte, DOS33DiskBytes),
+		sectors:          16,
+		physicalToStored: Dos33PhysicalToLogicalSectorMap,
+		bytesPerTrack:    16 * 256,
+		tracks:           DOS33Tracks,
+	}
+}
+
 // ReadPhysicalSector reads a single physical sector from the disk. It
 // always returns 256 byes.
 func (d DSK) ReadPhysicalSector(track byte, sector byte) ([]byte, error) {
