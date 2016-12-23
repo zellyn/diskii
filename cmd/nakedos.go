@@ -99,7 +99,7 @@ func runMkhello(args []string) error {
 		0x6D, 0x01, 0xDC, // ADC  NKRDFILE
 		0x2C, toLoad, 0xDF, // BIT ${file number to load}
 		0x2C, 0x00, byte(address >> 8), // BIT ${target page}
-		0xF8,                                // CLD
+		0xD8,                                // CLD
 		0x4C, byte(start), byte(start >> 8), // JMP ${target page}
 	}
 	fileInfo := disk.FileInfo{
