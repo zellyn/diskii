@@ -19,7 +19,7 @@ diskii's major disadvantage is that it mostly doesn't exist yet.
 
 [![Build Status](https://travis-ci.org/zellyn/diskii.svg?branch=master)](https://travis-ci.org/zellyn/diskii)
 [![Report Card](https://goreportcard.com/badge/github.com/zellyn/diskii)](https://goreportcard.com/report/github.com/zellyn/diskii)
-
+[![GoDoc](https://godoc.org/github.com/zellyn/diskii/lib?status.svg)](https://godoc.org/github.com/zellyn/diskii/lib)
 
 It rhymes with “whiskey”.
 
