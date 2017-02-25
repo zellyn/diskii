@@ -84,6 +84,7 @@ will be likely to get priority.
 
 - http://a2ciderpress.com/ - the great grandaddy of them all. Windows only, unless you Wine
 - http://applecommander.sourceforge.net/ - the commandline, cross-platform alternative to CiderPress
+- http://brutaldeluxe.fr/products/crossdevtools/cadius/index.html - Brutal Deluxe's commandline tools
 - https://github.com/cybernesto/dsktool.rb
 - https://github.com/cmosher01/Apple-II-Disk-Tools
 - https://github.com/madsen/perl-libA2
