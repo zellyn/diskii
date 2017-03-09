@@ -10,7 +10,10 @@ images. Given that
 [AppleCommander](http://applecommander.sourceforge.net/) already does
 everything, it's not terribly necessary. It is, however, mine. Minor
 benefits (right now) are binaries you can copy around (no Java
-needed), and support for Super-Mon symbol tables on NakedOS disks.
+needed), support for Super-Mon symbol tables on NakedOS disks, and
+creation of
+"[Standard Delivery](https://github.com/peterferrie/standard-delivery)"
+disk images.
 
 diskii-the-library is probably more useful: a library of
 disk-image-manipulation code that can be used by other Go programs.
