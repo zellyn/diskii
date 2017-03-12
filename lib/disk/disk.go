@@ -34,14 +34,28 @@ var Dos33PhysicalToLogicalSectorMap = []byte{
 	0x0B, 0x03, 0x0A, 0x02, 0x09, 0x01, 0x08, 0x0F,
 }
 
+// ProDOSLogicalToPhysicalSectorMap maps logical sector numbers to pysical ones.
+// See [UtA2e 9-43 - Sectors vs. Blocks].
+var ProDOSLogicalToPhysicalSectorMap = []byte{
+	0x00, 0x02, 0x04, 0x06, 0x08, 0x0A, 0x0C, 0x0E,
+	0x01, 0x03, 0x05, 0x07, 0x09, 0x0B, 0x0D, 0x0F,
+}
+
+// ProDosPhysicalToLogicalSectorMap maps physical sector numbers to logical ones.
+// See [UtA2e 9-43 - Sectors vs. Blocks].
+var ProDosPhysicalToLogicalSectorMap = []byte{
+	0x00, 0x08, 0x01, 0x09, 0x02, 0x0A, 0x03, 0x0B,
+	0x04, 0x0C, 0x05, 0x0D, 0x06, 0x0E, 0x07, 0x0F,
+}
+
 // TrackSector is a pair of track/sector bytes.
 type TrackSector struct {
 	Track  byte
 	Sector byte
 }
 
-// SectorDisk is the interface use to read and write disks by physical
-// (matches sector header) sector number.
+// SectorDisk is the interface used to read and write disks by
+// physical (matches sector header) sector number.
 type SectorDisk interface {
 	// ReadPhysicalSector reads a single physical sector from the disk. It
 	// always returns 256 byes.
