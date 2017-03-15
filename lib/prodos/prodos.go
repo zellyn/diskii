@@ -2,9 +2,6 @@
 
 // Package prodos contains routines for working with the on-disk
 // structures of Apple ProDOS.
-//
-// TODO(zellyn): remove errors from FromBlock(), and move validation
-// into separate Validate() functions.
 package prodos
 
 import (
@@ -108,21 +105,25 @@ func (dt DateTime) toBytes() []byte {
 }
 
 // fromBytes turns a slice of four bytes back into a DateTime.
-func (dt *DateTime) fromBytes(b []byte) error {
+func (dt *DateTime) fromBytes(b []byte) {
 	if len(b) != 4 {
-		return fmt.Errorf("DateTime expects 4 bytes; got %d", len(b))
-	}
-	if b[2] >= 0x20 {
-		return fmt.Errorf("DateTime expects hour<0x20; got 0x%02x", b[2])
-	}
-	if b[3] >= 0x40 {
-		return fmt.Errorf("DateTime expects minute<0x40; got 0x%02x", b[3])
+		panic(fmt.Sprintf("DateTime expects 4 bytes; got %d", len(b)))
 	}
 	dt.YMD[0] = b[0]
 	dt.YMD[1] = b[1]
 	dt.HM[0] = b[2]
 	dt.HM[1] = b[3]
-	return nil
+}
+
+// Validate checks a DateTime for problems, returning a slice of errors
+func (dt DateTime) Validate(fieldDescription string) (errors []error) {
+	if dt.HM[0] >= 24 {
+		errors = append(errors, fmt.Errorf("%s expects hour<24; got %d", fieldDescription, dt.HM[0]))
+	}
+	if dt.HM[1] >= 60 {
+		errors = append(errors, fmt.Errorf("%s expects minute<60; got %x", fieldDescription, dt.HM[1]))
+	}
+	return errors
 }
 
 // VolumeDirectoryKeyBlock is the struct used to hold the ProDOS Volume Directory Key
@@ -132,6 +133,7 @@ type VolumeDirectoryKeyBlock struct {
 	Next        uint16 // Pointer to next block in the Volume Directory
 	Header      VolumeDirectoryHeader
 	Descriptors [12]FileDescriptor
+	Extra       byte // Trailing byte (so we don't lose it)
 }
 
 // ToBlock marshals the VolumeDirectoryKeyBlock to a Block of bytes.
@@ -143,25 +145,34 @@ func (vdkb VolumeDirectoryKeyBlock) ToBlock() Block {
 	for i, desc := range vdkb.Descriptors {
 		copyBytes(block[0x2b+i*0x27:0x2b+(i+1)*0x27], desc.toBytes())
 	}
+	block[511] = vdkb.Extra
 	return block
 }
 
 // FromBlock unmarshals a Block of bytes into a VolumeDirectoryKeyBlock.
-func (vdkb *VolumeDirectoryKeyBlock) FromBlock(block Block) error {
+func (vdkb *VolumeDirectoryKeyBlock) FromBlock(block Block) {
 	vdkb.Prev = binary.LittleEndian.Uint16(block[0x0:0x2])
-	if vdkb.Prev != 0 {
-		return fmt.Errorf("Volume Directory Key Block should have a `Previous` block of 0, got $%04x", vdkb.Prev)
-	}
 	vdkb.Next = binary.LittleEndian.Uint16(block[0x2:0x4])
-	if err := vdkb.Header.fromBytes(block[0x04:0x2b]); err != nil {
-		return err
-	}
+	vdkb.Header.fromBytes(block[0x04:0x2b])
 	for i := range vdkb.Descriptors {
-		if err := vdkb.Descriptors[i].fromBytes(block[0x2b+i*0x27 : 0x2b+(i+1)*0x27]); err != nil {
-			return fmt.Errorf("cannot deserialize file descriptor %d of Volume Directory Key Block: %v", err)
-		}
+		vdkb.Descriptors[i].fromBytes(block[0x2b+i*0x27 : 0x2b+(i+1)*0x27])
 	}
-	return nil
+	vdkb.Extra = block[511]
+}
+
+// Validate validates a VolumeDirectoryKeyBlock for valid values.
+func (vdkb VolumeDirectoryKeyBlock) Validate() (errors []error) {
+	if vdkb.Prev != 0 {
+		errors = append(errors, fmt.Errorf("Volume Directory Key Block should have a `Previous` block of 0, got $%04x", vdkb.Prev))
+	}
+	errors = append(errors, vdkb.Header.Validate()...)
+	for _, desc := range vdkb.Descriptors {
+		errors = append(errors, desc.Validate()...)
+	}
+	if vdkb.Extra != 0 {
+		errors = append(errors, fmt.Errorf("Expected last byte of Volume Directory Key Block == 0x0; got 0x%02x", vdkb.Extra))
+	}
+	return errors
 }
 
 // VolumeDirectoryBlock is a normal (non-key) segment in the Volume Directory Header.
@@ -169,6 +180,7 @@ type VolumeDirectoryBlock struct {
 	Prev        uint16 // Pointer to previous block in the Volume Directory.
 	Next        uint16 // Pointer to next block in the Volume Directory.
 	Descriptors [13]FileDescriptor
+	Extra       byte // Trailing byte (so we don't lose it)
 }
 
 // ToBlock marshals a VolumeDirectoryBlock to a Block of bytes.
@@ -179,19 +191,29 @@ func (vdb VolumeDirectoryBlock) ToBlock() Block {
 	for i, desc := range vdb.Descriptors {
 		copyBytes(block[0x04+i*0x27:0x04+(i+1)*0x27], desc.toBytes())
 	}
+	block[511] = vdb.Extra
 	return block
 }
 
 // FromBlock unmarshals a Block of bytes into a VolumeDirectoryBlock.
-func (vdb *VolumeDirectoryBlock) FromBlock(block Block) error {
+func (vdb *VolumeDirectoryBlock) FromBlock(block Block) {
 	vdb.Prev = binary.LittleEndian.Uint16(block[0x0:0x2])
 	vdb.Next = binary.LittleEndian.Uint16(block[0x2:0x4])
 	for i := range vdb.Descriptors {
-		if err := vdb.Descriptors[i].fromBytes(block[0x4+i*0x27 : 0x4+(i+1)*0x27]); err != nil {
-			return fmt.Errorf("cannot deserialize file descriptor %d of Volume Directory Block: %v", err)
-		}
+		vdb.Descriptors[i].fromBytes(block[0x4+i*0x27 : 0x4+(i+1)*0x27])
 	}
-	return nil
+	vdb.Extra = block[511]
+}
+
+// Validate validates a VolumeDirectoryBlock for valid values.
+func (vdb VolumeDirectoryBlock) Validate() (errors []error) {
+	for _, desc := range vdb.Descriptors {
+		errors = append(errors, desc.Validate()...)
+	}
+	if vdb.Extra != 0 {
+		errors = append(errors, fmt.Errorf("Expected last byte of Volume Directory Block == 0x0; got 0x%02x", vdb.Extra))
+	}
+	return errors
 }
 
 type VolumeDirectoryHeader struct {
@@ -221,32 +243,35 @@ func (vdh VolumeDirectoryHeader) toBytes() []byte {
 	buf[0x1e] = byte(vdh.Access)
 	buf[0x1f] = vdh.EntryLength
 	buf[0x20] = vdh.EntriesPerBlock
-	binary.LittleEndian.PutUint16(buf[0x20:0x22], vdh.FileCount)
-	binary.LittleEndian.PutUint16(buf[0x22:0x24], vdh.BitMapPointer)
-	binary.LittleEndian.PutUint16(buf[0x24:0x26], vdh.TotalBlocks)
+	binary.LittleEndian.PutUint16(buf[0x21:0x23], vdh.FileCount)
+	binary.LittleEndian.PutUint16(buf[0x23:0x25], vdh.BitMapPointer)
+	binary.LittleEndian.PutUint16(buf[0x25:0x27], vdh.TotalBlocks)
 	return buf
 }
 
 // fromBytes unmarshals a slice of bytes into a VolumeDirectoryHeader.
-func (vdh *VolumeDirectoryHeader) fromBytes(buf []byte) error {
+func (vdh *VolumeDirectoryHeader) fromBytes(buf []byte) {
 	if len(buf) != 0x27 {
-		return fmt.Errorf("VolumeDirectoryHeader should be 0x27 bytes long; got 0x%02x", len(buf))
+		panic(fmt.Sprintf("VolumeDirectoryHeader should be 0x27 bytes long; got 0x%02x", len(buf)))
 	}
 	vdh.TypeAndNameLength = buf[0]
 	copyBytes(vdh.VolumeName[:], buf[1:0x10])
 	copyBytes(vdh.Unused1[:], buf[0x10:0x18])
-	if err := vdh.Creation.fromBytes(buf[0x18:0x1c]); err != nil {
-		return fmt.Errorf("unable to deserialize Volume Directory Header Creation date/time: %v", err)
-	}
+	vdh.Creation.fromBytes(buf[0x18:0x1c])
 	vdh.Version = buf[0x1c]
 	vdh.MinVersion = buf[0x1d]
 	vdh.Access = Access(buf[0x1e])
 	vdh.EntryLength = buf[0x1f]
 	vdh.EntriesPerBlock = buf[0x20]
-	vdh.FileCount = binary.LittleEndian.Uint16(buf[0x20:0x22])
-	vdh.BitMapPointer = binary.LittleEndian.Uint16(buf[0x22:0x24])
-	vdh.TotalBlocks = binary.LittleEndian.Uint16(buf[0x24:0x26])
-	return nil
+	vdh.FileCount = binary.LittleEndian.Uint16(buf[0x21:0x23])
+	vdh.BitMapPointer = binary.LittleEndian.Uint16(buf[0x23:0x25])
+	vdh.TotalBlocks = binary.LittleEndian.Uint16(buf[0x25:0x27])
+}
+
+// Validate validates a VolumeDirectoryHeader for valid values.
+func (vdh VolumeDirectoryHeader) Validate() (errors []error) {
+	errors = append(errors, vdh.Creation.Validate("creation date/time of VolumeDirectoryHeader")...)
+	return errors
 }
 
 type Access byte
@@ -282,8 +307,8 @@ type FileDescriptor struct {
 	HeaderPointer uint16 // Block  number of the key block for the directory which describes this file.
 }
 
-// Filename returns the string filename of a file descriptor.
-func (fd FileDescriptor) Filename() string {
+// Name returns the string filename of a file descriptor.
+func (fd FileDescriptor) Name() string {
 	return string(fd.FileName[0 : fd.TypeAndNameLength&0xf])
 }
 
@@ -307,30 +332,30 @@ func (fd FileDescriptor) toBytes() []byte {
 }
 
 // fromBytes unmarshals a slice of bytes into a FileDescriptor.
-func (fd *FileDescriptor) fromBytes(buf []byte) error {
+func (fd *FileDescriptor) fromBytes(buf []byte) {
 	if len(buf) != 0x27 {
-		return fmt.Errorf("FileDescriptor should be 0x27 bytes long; got 0x%02x", len(buf))
+		panic(fmt.Sprintf("FileDescriptor should be 0x27 bytes long; got 0x%02x", len(buf)))
 	}
 	fd.TypeAndNameLength = buf[0]
 	copyBytes(fd.FileName[:], buf[1:0x10])
 	fd.FileType = buf[0x10]
-
 	fd.KeyPointer = binary.LittleEndian.Uint16(buf[0x11:0x13])
 	fd.BlocksUsed = binary.LittleEndian.Uint16(buf[0x13:0x15])
 	copyBytes(fd.Eof[:], buf[0x15:0x18])
-	if err := fd.Creation.fromBytes(buf[0x18:0x1c]); err != nil {
-		return fmt.Errorf("unable to unmarshal Creation date/time of FileDescriptor %q: %v", fd.Filename(), err)
-	}
+	fd.Creation.fromBytes(buf[0x18:0x1c])
 	fd.Version = buf[0x1c]
 	fd.MinVersion = buf[0x1d]
 	fd.Access = Access(buf[0x1e])
 	fd.AuxType = binary.LittleEndian.Uint16(buf[0x1f:0x21])
-	if err := fd.LastMod.fromBytes(buf[0x21:0x25]); err != nil {
-		return fmt.Errorf("unable to unmarshal last modification date/time of FileDescriptor %q: %v", fd.Filename(), err)
-	}
+	fd.LastMod.fromBytes(buf[0x21:0x25])
 	fd.HeaderPointer = binary.LittleEndian.Uint16(buf[0x25:0x27])
+}
 
-	return nil
+// Validate validates a FileDescriptor for valid values.
+func (fd FileDescriptor) Validate() (errors []error) {
+	errors = append(errors, fd.Creation.Validate(fmt.Sprintf("creation date/time of FileDescriptor %q", fd.Name()))...)
+	errors = append(errors, fd.LastMod.Validate(fmt.Sprintf("last modification date/time of FileDescriptor %q", fd.Name()))...)
+	return errors
 }
 
 // An index block contains 256 16-bit block numbers, pointing to other
@@ -355,6 +380,7 @@ type SubdirectoryKeyBlock struct {
 	Next        uint16 // Pointer to next block in the Volume Directory
 	Header      SubdirectoryHeader
 	Descriptors [12]FileDescriptor
+	Extra       byte // Trailing byte (so we don't lose it)
 }
 
 // ToBlock marshals the SubdirectoryKeyBlock to a Block of bytes.
@@ -366,25 +392,34 @@ func (skb SubdirectoryKeyBlock) ToBlock() Block {
 	for i, desc := range skb.Descriptors {
 		copyBytes(block[0x2b+i*0x27:0x2b+(i+1)*0x27], desc.toBytes())
 	}
+	block[511] = skb.Extra
 	return block
 }
 
 // FromBlock unmarshals a Block of bytes into a SubdirectoryKeyBlock.
-func (skb *SubdirectoryKeyBlock) FromBlock(block Block) error {
+func (skb *SubdirectoryKeyBlock) FromBlock(block Block) {
 	skb.Prev = binary.LittleEndian.Uint16(block[0x0:0x2])
-	if skb.Prev != 0 {
-		return fmt.Errorf("Subdirectory Key Block should have a `Previous` block of 0, got $%04x", skb.Prev)
-	}
 	skb.Next = binary.LittleEndian.Uint16(block[0x2:0x4])
-	if err := skb.Header.fromBytes(block[0x04:0x2b]); err != nil {
-		return err
-	}
+	skb.Header.fromBytes(block[0x04:0x2b])
 	for i := range skb.Descriptors {
-		if err := skb.Descriptors[i].fromBytes(block[0x2b+i*0x27 : 0x2b+(i+1)*0x27]); err != nil {
-			return fmt.Errorf("cannot deserialize file descriptor %d of Subdirectory Key Block: %v", err)
-		}
+		skb.Descriptors[i].fromBytes(block[0x2b+i*0x27 : 0x2b+(i+1)*0x27])
 	}
-	return nil
+	skb.Extra = block[511]
+}
+
+// Validate validates a SubdirectoryKeyBlock for valid values.
+func (skb SubdirectoryKeyBlock) Validate() (errors []error) {
+	if skb.Prev != 0 {
+		errors = append(errors, fmt.Errorf("Subdirectory Key Block should have a `Previous` block of 0, got $%04x", skb.Prev))
+	}
+	errors = append(errors, skb.Header.Validate()...)
+	for _, desc := range skb.Descriptors {
+		errors = append(errors, desc.Validate()...)
+	}
+	if skb.Extra != 0 {
+		errors = append(errors, fmt.Errorf("Expected last byte of Subdirectory Key Block == 0x0; got 0x%02x", skb.Extra))
+	}
+	return errors
 }
 
 // SubdirectoryBlock is a normal (non-key) segment in a Subdirectory.
@@ -392,6 +427,7 @@ type SubdirectoryBlock struct {
 	Prev        uint16 // Pointer to previous block in the Volume Directory.
 	Next        uint16 // Pointer to next block in the Volume Directory.
 	Descriptors [13]FileDescriptor
+	Extra       byte // Trailing byte (so we don't lose it)
 }
 
 // ToBlock marshals a SubdirectoryBlock to a Block of bytes.
@@ -402,19 +438,29 @@ func (sb SubdirectoryBlock) ToBlock() Block {
 	for i, desc := range sb.Descriptors {
 		copyBytes(block[0x04+i*0x27:0x04+(i+1)*0x27], desc.toBytes())
 	}
+	block[511] = sb.Extra
 	return block
 }
 
 // FromBlock unmarshals a Block of bytes into a SubdirectoryBlock.
-func (sb *SubdirectoryBlock) FromBlock(block Block) error {
+func (sb *SubdirectoryBlock) FromBlock(block Block) {
 	sb.Prev = binary.LittleEndian.Uint16(block[0x0:0x2])
 	sb.Next = binary.LittleEndian.Uint16(block[0x2:0x4])
 	for i := range sb.Descriptors {
-		if err := sb.Descriptors[i].fromBytes(block[0x4+i*0x27 : 0x4+(i+1)*0x27]); err != nil {
-			return fmt.Errorf("cannot deserialize file descriptor %d of Volume Directory Block: %v", err)
-		}
+		sb.Descriptors[i].fromBytes(block[0x4+i*0x27 : 0x4+(i+1)*0x27])
 	}
-	return nil
+	sb.Extra = block[511]
+}
+
+// Validate validates a SubdirectoryBlock for valid values.
+func (sb SubdirectoryBlock) Validate() (errors []error) {
+	for _, desc := range sb.Descriptors {
+		errors = append(errors, desc.Validate()...)
+	}
+	if sb.Extra != 0 {
+		errors = append(errors, fmt.Errorf("Expected last byte of Subdirectory Block == 0x0; got 0x%02x", sb.Extra))
+	}
+	return errors
 }
 
 type SubdirectoryHeader struct {
@@ -447,38 +493,46 @@ func (sh SubdirectoryHeader) toBytes() []byte {
 	buf[0x1e] = byte(sh.Access)
 	buf[0x1f] = sh.EntryLength
 	buf[0x20] = sh.EntriesPerBlock
-	binary.LittleEndian.PutUint16(buf[0x20:0x22], sh.FileCount)
-	binary.LittleEndian.PutUint16(buf[0x22:0x24], sh.ParentPointer)
-	buf[0x24] = sh.ParentEntry
-	buf[0x25] = sh.ParentEntryLength
+	binary.LittleEndian.PutUint16(buf[0x21:0x23], sh.FileCount)
+	binary.LittleEndian.PutUint16(buf[0x23:0x25], sh.ParentPointer)
+	buf[0x25] = sh.ParentEntry
+	buf[0x26] = sh.ParentEntryLength
 	return buf
 }
 
 // fromBytes unmarshals a slice of bytes into a SubdirectoryHeader.
-func (sh *SubdirectoryHeader) fromBytes(buf []byte) error {
+func (sh *SubdirectoryHeader) fromBytes(buf []byte) {
 	if len(buf) != 0x27 {
-		return fmt.Errorf("VolumeDirectoryHeader should be 0x27 bytes long; got 0x%02x", len(buf))
+		panic(fmt.Sprintf("VolumeDirectoryHeader should be 0x27 bytes long; got 0x%02x", len(buf)))
 	}
 	sh.TypeAndNameLength = buf[0]
 	copyBytes(sh.SubdirectoryName[:], buf[1:0x10])
-	if buf[0x10] != 0x75 {
-		return fmt.Errorf("the byte after subdirectory name should be 0x75; got 0x%02x", buf[0x10])
-	}
 	sh.SeventyFive = buf[0x10]
 	copyBytes(sh.Unused1[:], buf[0x11:0x18])
-	if err := sh.Creation.fromBytes(buf[0x18:0x1c]); err != nil {
-		return fmt.Errorf("unable to deserialize Subdirectory Header Creation date/time: %v", err)
-	}
+	sh.Creation.fromBytes(buf[0x18:0x1c])
 	sh.Version = buf[0x1c]
 	sh.MinVersion = buf[0x1d]
 	sh.Access = Access(buf[0x1e])
 	sh.EntryLength = buf[0x1f]
 	sh.EntriesPerBlock = buf[0x20]
-	sh.FileCount = binary.LittleEndian.Uint16(buf[0x20:0x22])
-	sh.ParentPointer = binary.LittleEndian.Uint16(buf[0x22:0x24])
-	sh.ParentEntry = buf[0x24]
-	sh.ParentEntryLength = buf[0x25]
-	return nil
+	sh.FileCount = binary.LittleEndian.Uint16(buf[0x21:0x23])
+	sh.ParentPointer = binary.LittleEndian.Uint16(buf[0x23:0x25])
+	sh.ParentEntry = buf[0x25]
+	sh.ParentEntryLength = buf[0x26]
+}
+
+// Validate validates a SubdirectoryHeader for valid values.
+func (sh SubdirectoryHeader) Validate() (errors []error) {
+	if sh.SeventyFive != 0x75 {
+		errors = append(errors, fmt.Errorf("Byte after subdirectory name %q should be 0x75; got 0x%02x", sh.Name(), sh.SeventyFive))
+	}
+	errors = append(errors, sh.Creation.Validate(fmt.Sprintf("subdirectory %q header creation date/time", sh.Name()))...)
+	return errors
+}
+
+// Name returns the string filename of a subdirectory header.
+func (sh SubdirectoryHeader) Name() string {
+	return string(sh.SubdirectoryName[0 : sh.TypeAndNameLength&0xf])
 }
 
 // copyBytes is just like the builtin copy, but just for byte slices,
