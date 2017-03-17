@@ -5,6 +5,8 @@ diskii
 functionality, but I'm still experimenting with the command syntax and
 organization, so don't get too comfy with it.
 
+![Seagull Srs Micro Software](img/seagull-srs.png)
+
 diskii-the-tool is a commandline tool for working with Apple II disk
 images. Given that
 [AppleCommander](http://applecommander.sourceforge.net/) already does
