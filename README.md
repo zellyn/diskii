@@ -35,7 +35,7 @@ Discussion/support is in
 ### Goals
 
 Eventually, it aims to be a comprehensive disk image manipulation
-tool, but for now only the `applesoft decode` command works.
+tool, but for now only some parts work.
 
 The library code aims (a) to support the commandline tool operations,
 and (b) to replace the "read and write disk images" code of the
@@ -45,7 +45,7 @@ Current disk operations supported:
 
 | Feature          | DOS 3.3  | ProDOS | NakedOS/Super-Mon  |
 | ---------------- | -------- | ------ | ------------------ |
-| basic structures | ✓        | …      | ✓                  |
+| basic structures | ✓        | ✓      | ✓                  |
 | ls               | ✓        | ✗      | ✓                  |
 | dump             | ✓        | ✗      | ✓                  |
 | put              | ✗        | ✗      | ✓                  |
@@ -75,7 +75,7 @@ operations matrix is listed below. Anything that an actual user needs
 will be likely to get priority.
 
 - [x] Build per-platform binaries for Linux, MacOS, Windows.
-- [ ] Implement `GetFile` for DOS 3.3
+- [x] Implement `GetFile` for DOS 3.3
 - [ ] Add and implement the `-l` flag for `ls`
 - [x] Add `Delete` to the `disk.Operator` interface
   - [x] Implement it for Super-Mon
@@ -83,7 +83,8 @@ will be likely to get priority.
 - [ ] Make 13-sector DOS disks work
 - [ ] Read/write nybble formats
 - [ ] Read/write gzipped files
-- [ ] Add ProDOS support (add `lib/prodos/prodos.go` and register a ProDOS operator factory)
+- [ ] Add basic ProDOS structures
+- [ ] Add ProDOS support
 
 ### Related tools
 
