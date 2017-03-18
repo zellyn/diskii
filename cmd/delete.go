@@ -38,11 +38,7 @@ func runDelete(args []string) error {
 	if len(args) != 2 {
 		return fmt.Errorf("delete expects a disk image filename, and a filename")
 	}
-	sd, err := disk.Open(args[0])
-	if err != nil {
-		return err
-	}
-	op, err := disk.OperatorFor(sd)
+	op, err := disk.Open(args[0])
 	if err != nil {
 		return err
 	}
@@ -57,7 +53,7 @@ func runDelete(args []string) error {
 	if err != nil {
 		return err
 	}
-	_, err = sd.Write(f)
+	_, err = op.Write(f)
 	if err != nil {
 		return err
 	}

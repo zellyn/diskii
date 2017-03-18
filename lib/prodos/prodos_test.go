@@ -6,10 +6,11 @@ import (
 	"testing"
 
 	"github.com/kr/pretty"
+	"github.com/zellyn/diskii/lib/disk"
 )
 
-func randomBlock() Block {
-	var b1 Block
+func randomBlock() disk.Block {
+	var b1 disk.Block
 	rand.Read(b1[:])
 	return b1
 }

@@ -156,12 +156,25 @@ func (md MappedDisk) Write(w io.Writer) (n int, err error) {
 	return md.sectorDisk.Write(w)
 }
 
-// Open opens a disk image by filename.
-func Open(filename string) (SectorDisk, error) {
+// OpenDisk opens a disk image by filename.
+func OpenDisk(filename string) (SectorDisk, error) {
 	ext := strings.ToLower(path.Ext(filename))
 	switch ext {
 	case ".dsk":
 		return LoadDSK(filename)
 	}
 	return nil, fmt.Errorf("Unimplemented/unknown disk file extension %q", ext)
+}
+
+// Open opens a disk image by filename, returning an Operator.
+func Open(filename string) (Operator, error) {
+	sd, err := OpenDisk(filename)
+	if err != nil {
+		return nil, err
+	}
+	op, err := OperatorForDisk(sd)
+	if err != nil {
+		return nil, err
+	}
+	return op, nil
 }

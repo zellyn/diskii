@@ -8,30 +8,14 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+
+	"github.com/zellyn/diskii/lib/disk"
 )
 
-// A single ProDOS block.
-type Block [512]byte
-
-// BlockDevice is the interface used to read and write devices by
-// logical block number.
-type BlockDevice interface {
-	// ReadBlock reads a single block from the device. It always returns
-	// 512 byes.
-	ReadBlock(index uint16) (Block, error)
-	// WriteBlock writes a single block to a device. It expects exactly
-	// 512 bytes.
-	WriteBlock(index uint16, data Block) error
-	// Blocks returns the number of blocks on the device.
-	Blocks() uint16
-	// Write writes the device contents to the given Writer.
-	Write(io.Writer) (int, error)
-}
-
-type VolumeBitMap []Block
+type VolumeBitMap []disk.Block
 
 func NewVolumeBitMap(blocks uint16) VolumeBitMap {
-	vbm := VolumeBitMap(make([]Block, (blocks+(512*8)-1)/(512*8)))
+	vbm := VolumeBitMap(make([]disk.Block, (blocks+(512*8)-1)/(512*8)))
 	for b := 0; b < int(blocks); b++ {
 		vbm.MarkUnused(uint16(b))
 	}
@@ -69,9 +53,9 @@ func (vbm VolumeBitMap) IsFree(block uint16) bool {
 }
 
 // ReadVolumeBitMap
-func ReadVolumeBitMap(bd BlockDevice, startBlock uint16) (VolumeBitMap, error) {
+func ReadVolumeBitMap(bd disk.BlockDevice, startBlock uint16) (VolumeBitMap, error) {
 	blocks := bd.Blocks() / 4096
-	vbm := make([]Block, blocks)
+	vbm := make([]disk.Block, blocks)
 	for i := uint16(0); i < blocks; i++ {
 		block, err := bd.ReadBlock(startBlock + i)
 		if err != nil {
@@ -84,7 +68,7 @@ func ReadVolumeBitMap(bd BlockDevice, startBlock uint16) (VolumeBitMap, error) {
 
 // Write writes the Volume Bit Map to a block device, starting at the
 // given block.
-func (vbm VolumeBitMap) Write(bd BlockDevice, startBlock uint16) error {
+func (vbm VolumeBitMap) Write(bd disk.BlockDevice, startBlock uint16) error {
 	for i, block := range vbm {
 		if err := bd.WriteBlock(startBlock+uint16(i), block); err != nil {
 			return fmt.Errorf("cannot write block %d of Volume Bit Map: %v", err)
@@ -137,8 +121,8 @@ type VolumeDirectoryKeyBlock struct {
 }
 
 // ToBlock marshals the VolumeDirectoryKeyBlock to a Block of bytes.
-func (vdkb VolumeDirectoryKeyBlock) ToBlock() Block {
-	var block Block
+func (vdkb VolumeDirectoryKeyBlock) ToBlock() disk.Block {
+	var block disk.Block
 	binary.LittleEndian.PutUint16(block[0x0:0x2], vdkb.Prev)
 	binary.LittleEndian.PutUint16(block[0x2:0x4], vdkb.Next)
 	copyBytes(block[0x04:0x02b], vdkb.Header.toBytes())
@@ -150,7 +134,7 @@ func (vdkb VolumeDirectoryKeyBlock) ToBlock() Block {
 }
 
 // FromBlock unmarshals a Block of bytes into a VolumeDirectoryKeyBlock.
-func (vdkb *VolumeDirectoryKeyBlock) FromBlock(block Block) {
+func (vdkb *VolumeDirectoryKeyBlock) FromBlock(block disk.Block) {
 	vdkb.Prev = binary.LittleEndian.Uint16(block[0x0:0x2])
 	vdkb.Next = binary.LittleEndian.Uint16(block[0x2:0x4])
 	vdkb.Header.fromBytes(block[0x04:0x2b])
@@ -184,8 +168,8 @@ type VolumeDirectoryBlock struct {
 }
 
 // ToBlock marshals a VolumeDirectoryBlock to a Block of bytes.
-func (vdb VolumeDirectoryBlock) ToBlock() Block {
-	var block Block
+func (vdb VolumeDirectoryBlock) ToBlock() disk.Block {
+	var block disk.Block
 	binary.LittleEndian.PutUint16(block[0x0:0x2], vdb.Prev)
 	binary.LittleEndian.PutUint16(block[0x2:0x4], vdb.Next)
 	for i, desc := range vdb.Descriptors {
@@ -196,7 +180,7 @@ func (vdb VolumeDirectoryBlock) ToBlock() Block {
 }
 
 // FromBlock unmarshals a Block of bytes into a VolumeDirectoryBlock.
-func (vdb *VolumeDirectoryBlock) FromBlock(block Block) {
+func (vdb *VolumeDirectoryBlock) FromBlock(block disk.Block) {
 	vdb.Prev = binary.LittleEndian.Uint16(block[0x0:0x2])
 	vdb.Next = binary.LittleEndian.Uint16(block[0x2:0x4])
 	for i := range vdb.Descriptors {
@@ -360,7 +344,7 @@ func (fd FileDescriptor) Validate() (errors []error) {
 
 // An index block contains 256 16-bit block numbers, pointing to other
 // blocks. The LSBs are stored in the first half, MSBs in the second.
-type IndexBlock Block
+type IndexBlock disk.Block
 
 // Get the blockNum'th block number from an index block.
 func (i IndexBlock) Get(blockNum byte) uint16 {
@@ -384,8 +368,8 @@ type SubdirectoryKeyBlock struct {
 }
 
 // ToBlock marshals the SubdirectoryKeyBlock to a Block of bytes.
-func (skb SubdirectoryKeyBlock) ToBlock() Block {
-	var block Block
+func (skb SubdirectoryKeyBlock) ToBlock() disk.Block {
+	var block disk.Block
 	binary.LittleEndian.PutUint16(block[0x0:0x2], skb.Prev)
 	binary.LittleEndian.PutUint16(block[0x2:0x4], skb.Next)
 	copyBytes(block[0x04:0x02b], skb.Header.toBytes())
@@ -397,7 +381,7 @@ func (skb SubdirectoryKeyBlock) ToBlock() Block {
 }
 
 // FromBlock unmarshals a Block of bytes into a SubdirectoryKeyBlock.
-func (skb *SubdirectoryKeyBlock) FromBlock(block Block) {
+func (skb *SubdirectoryKeyBlock) FromBlock(block disk.Block) {
 	skb.Prev = binary.LittleEndian.Uint16(block[0x0:0x2])
 	skb.Next = binary.LittleEndian.Uint16(block[0x2:0x4])
 	skb.Header.fromBytes(block[0x04:0x2b])
@@ -431,8 +415,8 @@ type SubdirectoryBlock struct {
 }
 
 // ToBlock marshals a SubdirectoryBlock to a Block of bytes.
-func (sb SubdirectoryBlock) ToBlock() Block {
-	var block Block
+func (sb SubdirectoryBlock) ToBlock() disk.Block {
+	var block disk.Block
 	binary.LittleEndian.PutUint16(block[0x0:0x2], sb.Prev)
 	binary.LittleEndian.PutUint16(block[0x2:0x4], sb.Next)
 	for i, desc := range sb.Descriptors {
@@ -443,7 +427,7 @@ func (sb SubdirectoryBlock) ToBlock() Block {
 }
 
 // FromBlock unmarshals a Block of bytes into a SubdirectoryBlock.
-func (sb *SubdirectoryBlock) FromBlock(block Block) {
+func (sb *SubdirectoryBlock) FromBlock(block disk.Block) {
 	sb.Prev = binary.LittleEndian.Uint16(block[0x0:0x2])
 	sb.Next = binary.LittleEndian.Uint16(block[0x2:0x4])
 	for i := range sb.Descriptors {
@@ -542,4 +526,67 @@ func copyBytes(dst, src []byte) int {
 		panic(fmt.Sprintf("copyBytes called with differing lengths %d and %d", len(dst), len(src)))
 	}
 	return copy(dst, src)
+}
+
+// operator is a disk.Operator - an interface for performing
+// high-level operations on files and directories.
+type operator struct {
+	dev disk.BlockDevice
+}
+
+var _ disk.Operator = operator{}
+
+// operatorName is the keyword name for the operator that undestands
+// prodos disks/devices.
+const operatorName = "prodos"
+
+// Name returns the name of the operator.
+func (o operator) Name() string {
+	return operatorName
+}
+
+// HasSubdirs returns true if the underlying operating system on the
+// disk allows subdirectories.
+func (o operator) HasSubdirs() bool {
+	return true
+}
+
+// Catalog returns a catalog of disk entries. subdir should be empty
+// for operating systems that do not support subdirectories.
+func (o operator) Catalog(subdir string) ([]disk.Descriptor, error) {
+	return nil, fmt.Errorf("%s doesn't implement Catalog yet", operatorName)
+	/*
+		fds, _, err := ReadCatalog(o.dev)
+		if err != nil {
+			return nil, err
+		}
+		descs := make([]disk.Descriptor, 0, len(fds))
+		for _, fd := range fds {
+			descs = append(descs, fd.descriptor())
+		}
+		return descs, nil
+	*/
+}
+
+// GetFile retrieves a file by name.
+func (o operator) GetFile(filename string) (disk.FileInfo, error) {
+	return disk.FileInfo{}, fmt.Errorf("%s doesn't implement GetFile yet", operatorName)
+}
+
+// Delete deletes a file by name. It returns true if the file was
+// deleted, false if it didn't exist.
+func (o operator) Delete(filename string) (bool, error) {
+	return false, fmt.Errorf("%s doesn't implement Delete yet", operatorName)
+}
+
+// PutFile writes a file by name. If the file exists and overwrite
+// is false, it returns with an error. Otherwise it returns true if
+// an existing file was overwritten.
+func (o operator) PutFile(fileInfo disk.FileInfo, overwrite bool) (existed bool, err error) {
+	return false, fmt.Errorf("%s doesn't implement PutFile yet", operatorName)
+}
+
+// Write writes the underlying device blocks to the given writer.
+func (o operator) Write(w io.Writer) (int, error) {
+	return o.dev.Write(w)
 }

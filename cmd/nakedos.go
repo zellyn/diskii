@@ -68,11 +68,7 @@ func runMkhello(args []string) error {
 	if start < address {
 		return fmt.Errorf("start address %d (%04X) < load address %d (%04X)", start, start, address, address)
 	}
-	sd, err := disk.Open(args[0])
-	if err != nil {
-		return err
-	}
-	op, err := disk.OperatorFor(sd)
+	op, err := disk.Open(args[0])
 	if err != nil {
 		return err
 	}
@@ -118,7 +114,7 @@ func runMkhello(args []string) error {
 	if err != nil {
 		return err
 	}
-	_, err = sd.Write(f)
+	_, err = op.Write(f)
 	if err != nil {
 		return err
 	}

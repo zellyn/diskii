@@ -36,11 +36,7 @@ func runDump(args []string) error {
 	if len(args) != 2 {
 		return fmt.Errorf("dump expects a disk image filename, and a filename")
 	}
-	sd, err := disk.Open(args[0])
-	if err != nil {
-		return err
-	}
-	op, err := disk.OperatorFor(sd)
+	op, err := disk.Open(args[0])
 	if err != nil {
 		return err
 	}

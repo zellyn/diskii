@@ -126,11 +126,11 @@ func TestReadSymbolTable(t *testing.T) {
 // TestGetFile tests the retrieval of a file's contents, using the
 // Operator interface.
 func TestGetFile(t *testing.T) {
-	sd, err := disk.Open(testDisk)
+	sd, err := disk.OpenDisk(testDisk)
 	if err != nil {
 		t.Fatal(err)
 	}
-	op, err := disk.OperatorFor(sd)
+	op, err := disk.OperatorForDisk(sd)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -213,11 +213,11 @@ func TestReadWriteSymbolTable(t *testing.T) {
 // TestPutFile tests the creation of a file, using the Operator
 // interface.
 func TestPutFile(t *testing.T) {
-	sd, err := disk.Open(testDisk)
+	sd, err := disk.OpenDisk(testDisk)
 	if err != nil {
 		t.Fatal(err)
 	}
-	op, err := disk.OperatorFor(sd)
+	op, err := disk.OperatorForDisk(sd)
 	if err != nil {
 		t.Fatal(err)
 	}

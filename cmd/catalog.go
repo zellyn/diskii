@@ -37,11 +37,7 @@ func runCat(args []string) error {
 	if len(args) < 1 || len(args) > 2 {
 		return fmt.Errorf("cat expects a disk image filename, and an optional subdirectory")
 	}
-	sd, err := disk.Open(args[0])
-	if err != nil {
-		return err
-	}
-	op, err := disk.OperatorFor(sd)
+	op, err := disk.Open(args[0])
 	if err != nil {
 		return err
 	}

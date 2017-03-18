@@ -7,6 +7,7 @@ package supermon
 import (
 	"encoding/binary"
 	"fmt"
+	"io"
 	"strconv"
 	"strings"
 
@@ -783,6 +784,11 @@ func (o Operator) PutFile(fileInfo disk.FileInfo, overwrite bool) (existed bool,
 	return existed, nil
 }
 
+// Write writes the underlying disk to the given writer.
+func (o Operator) Write(w io.Writer) (int, error) {
+	return o.SD.Write(w)
+}
+
 // operatorFactory is the factory that returns supermon operators
 // given disk images.
 func operatorFactory(sd disk.SectorDisk) (disk.Operator, error) {
@@ -805,5 +811,5 @@ func operatorFactory(sd disk.SectorDisk) (disk.Operator, error) {
 }
 
 func init() {
-	disk.RegisterOperatorFactory(operatorName, operatorFactory)
+	disk.RegisterDiskOperatorFactory(operatorName, operatorFactory)
 }

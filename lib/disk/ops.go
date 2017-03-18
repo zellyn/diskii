@@ -9,6 +9,7 @@ package disk
 import (
 	"errors"
 	"fmt"
+	"io"
 	"sort"
 	"strings"
 )
@@ -42,6 +43,8 @@ type Operator interface {
 	// is false, it returns with an error. Otherwise it returns true if
 	// an existing file was overwritten.
 	PutFile(fileInfo FileInfo, overwrite bool) (existed bool, err error)
+	// Write writes the underlying disk to the given writer.
+	Write(io.Writer) (int, error)
 }
 
 // FileInfo represents a file descriptor plus the content.
@@ -51,40 +54,40 @@ type FileInfo struct {
 	StartAddress uint16
 }
 
-// operatorFactory is the type of functions that accept a SectorDisk,
+// diskOperatorFactory is the type of functions that accept a SectorDisk,
 // and may return an Operator interface to operate on it.
-type operatorFactory func(SectorDisk) (Operator, error)
+type diskOperatorFactory func(SectorDisk) (Operator, error)
 
-// operatorFactories is the map of currently-registered operator
-// factories.
-var operatorFactories map[string]operatorFactory
+// diskOperatorFactories is the map of currently-registered disk
+// operator factories.
+var diskOperatorFactories map[string]diskOperatorFactory
 
 func init() {
-	operatorFactories = make(map[string]operatorFactory)
+	diskOperatorFactories = make(map[string]diskOperatorFactory)
 }
 
-// RegisterOperatorFactory registers an operator factory with the
-// given name: a function that accepts a SectorDisk, and may return an
-// Operator. It doesn't lock operatorFactories: it is expected to be
-// called only from package `init` functions.
-func RegisterOperatorFactory(name string, factory operatorFactory) {
-	operatorFactories[name] = factory
+// RegisterDiskOperatorFactory registers a disk operator factory with
+// the given name: a function that accepts a SectorDisk, and may
+// return an Operator. It doesn't lock diskOperatorFactories: it is
+// expected to be called only from package `init` functions.
+func RegisterDiskOperatorFactory(name string, factory diskOperatorFactory) {
+	diskOperatorFactories[name] = factory
 }
 
-// OperatorFor returns an Operator for the given SectorDisk, if possible.
-func OperatorFor(sd SectorDisk) (Operator, error) {
-	if len(operatorFactories) == 0 {
+// OperatorForDisk returns an Operator for the given SectorDisk, if possible.
+func OperatorForDisk(sd SectorDisk) (Operator, error) {
+	if len(diskOperatorFactories) == 0 {
 		return nil, errors.New("Cannot find an operator matching the given disk image (none registered)")
 	}
-	for _, factory := range operatorFactories {
+	for _, factory := range diskOperatorFactories {
 		if operator, err := factory(sd); err == nil {
 			return operator, nil
 		}
 	}
-	names := make([]string, 0, len(operatorFactories))
-	for name := range operatorFactories {
+	names := make([]string, 0, len(diskOperatorFactories))
+	for name := range diskOperatorFactories {
 		names = append(names, `"`+name+`"`)
 	}
 	sort.Strings(names)
-	return nil, fmt.Errorf("Cannot find an operator matching the given disk image (tried %s)", strings.Join(names, ", "))
+	return nil, fmt.Errorf("Cannot find a disk operator matching the given disk image (tried %s)", strings.Join(names, ", "))
 }

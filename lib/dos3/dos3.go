@@ -7,6 +7,7 @@ package dos3
 import (
 	"encoding/binary"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/zellyn/diskii/lib/disk"
@@ -669,6 +670,11 @@ func (o operator) PutFile(fileInfo disk.FileInfo, overwrite bool) (existed bool,
 	return false, fmt.Errorf("%s does not implement PutFile yet", operatorName)
 }
 
+// Write writes the underlying disk to the given writer.
+func (o operator) Write(w io.Writer) (int, error) {
+	return o.lsd.Write(w)
+}
+
 // operatorFactory is the factory that returns dos3 operators given
 // disk images.
 func operatorFactory(sd disk.SectorDisk) (disk.Operator, error) {
@@ -684,5 +690,5 @@ func operatorFactory(sd disk.SectorDisk) (disk.Operator, error) {
 }
 
 func init() {
-	disk.RegisterOperatorFactory(operatorName, operatorFactory)
+	disk.RegisterDiskOperatorFactory(operatorName, operatorFactory)
 }
