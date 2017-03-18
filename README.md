@@ -43,21 +43,21 @@ and (b) to replace the "read and write disk images" code of the
 
 Current disk operations supported:
 
-| Feature          | DOS 3.3            | ProDOS | NakedOS/Super-Mon  |
-| ---------------- | ------------------ | ------ | ------------------ |
-| basic structures | :white_check_mark: | :x:    | :white_check_mark: |
-| ls               | :white_check_mark: | :x:    | :white_check_mark: |
-| dump             | :white_check_mark: | :x:    | :white_check_mark: |
-| put              | :x:                | :x:    | :white_check_mark: |
-| dumptext         | :x:                | :x:    | :x:                |
-| delete           | :x:                | :x:    | :x:                |
-| rename           | :x:                | :x:    | :x:                |
-| put              | :x:                | :x:    | :x:                |
-| puttext          | :x:                | :x:    | :x:                |
-| extract (all)    | :x:                | :x:    | :x:                |
-| lock/unlock      | :x:                | :x:    | :x:                |
-| init             | :x:                | :x:    | :x:                |
-| defrag           | :x:                | :x:    | :x:                |
+| Feature          | DOS 3.3  | ProDOS | NakedOS/Super-Mon  |
+| ---------------- | -------- | ------ | ------------------ |
+| basic structures | ✓        | …      | ✓                  |
+| ls               | ✓        | ✗      | ✓                  |
+| dump             | ✓        | ✗      | ✓                  |
+| put              | ✗        | ✗      | ✓                  |
+| dumptext         | ✗        | ✗      | ✗                  |
+| delete           | ✗        | ✗      | ✗                  |
+| rename           | ✗        | ✗      | ✗                  |
+| put              | ✗        | ✗      | ✗                  |
+| puttext          | ✗        | ✗      | ✗                  |
+| extract (all)    | ✗        | ✗      | ✗                  |
+| lock/unlock      | ✗        | ✗      | ✗                  |
+| init             | ✗        | ✗      | ✗                  |
+| defrag           | ✗        | ✗      | ✗                  |
 
 ### Installing/updating
 Assuming you have Go installed, run `go get -u github.com/zellyn/diskii`
@@ -70,7 +70,7 @@ request or open an issue.
 
 ### Short-term TODOs/roadmap/easy ways to contribute
 
-My rough TODO list (apart from anything marked (:x:) in the disk
+My rough TODO list (apart from anything marked (✗) in the disk
 operations matrix is listed below. Anything that an actual user needs
 will be likely to get priority.
 
