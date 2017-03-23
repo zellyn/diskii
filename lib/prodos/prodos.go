@@ -590,3 +590,29 @@ func (o operator) PutFile(fileInfo disk.FileInfo, overwrite bool) (existed bool,
 func (o operator) Write(w io.Writer) (int, error) {
 	return o.dev.Write(w)
 }
+
+// deviceOperatorFactory is the factory that returns prodos operators
+// given device images.
+func deviceOperatorFactory(bd disk.BlockDevice) (disk.Operator, error) {
+	op := operator{dev: bd}
+	_, err := op.Catalog("")
+	if err != nil {
+		return nil, fmt.Errorf("Cannot read catalog. Underlying error: %v", err)
+	}
+	return op, nil
+}
+
+// diskOperatorFactory is the factory that returns dos3 operators
+// given disk images.
+func diskOperatorFactory(sd disk.SectorDisk) (disk.Operator, error) {
+	bd, err := disk.BlockDeviceFromSectorDisk(sd)
+	if err != nil {
+		return nil, err
+	}
+	return deviceOperatorFactory(bd)
+}
+
+func init() {
+	disk.RegisterDeviceOperatorFactory(operatorName, deviceOperatorFactory)
+	disk.RegisterDiskOperatorFactory(operatorName, diskOperatorFactory)
+}

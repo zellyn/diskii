@@ -7,6 +7,7 @@ import (
 
 	// Import disk operator factories for DOS3 and Super-Mon
 	_ "github.com/zellyn/diskii/lib/dos3"
+	_ "github.com/zellyn/diskii/lib/prodos"
 	_ "github.com/zellyn/diskii/lib/supermon"
 )
 
