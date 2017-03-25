@@ -12,10 +12,45 @@ import (
 	"github.com/zellyn/diskii/lib/disk"
 )
 
-type VolumeBitMap []disk.Block
+// blockBase represents a 512-byte block of data.
+type blockBase struct {
+	block uint16 // Block index this data was loaded from.
+}
 
-func NewVolumeBitMap(blocks uint16) VolumeBitMap {
-	vbm := VolumeBitMap(make([]disk.Block, (blocks+(512*8)-1)/(512*8)))
+// GetBlock gets the block index from a blockBase.
+func (bb blockBase) GetBlock() uint16 {
+	return bb.block
+}
+
+// SetBlock sets the block index of a blockBase.
+func (bb *blockBase) SetBlock(block uint16) {
+	bb.block = block
+}
+
+// A bitmapPart is a single block of a volumeBitMap.
+type bitmapPart struct {
+	blockBase
+	data disk.Block
+}
+
+// FromBlock unmarshals a bitmapPart from a Block.
+func (bp *bitmapPart) FromBlock(block disk.Block) error {
+	bp.data = block
+	return nil
+}
+
+// ToBlock marshals a bitmapPart struct to a block.
+func (bp bitmapPart) ToBlock() (disk.Block, error) {
+	return bp.data, nil
+}
+
+type VolumeBitMap []bitmapPart
+
+func NewVolumeBitMap(startBlock uint16, blocks uint16) VolumeBitMap {
+	vbm := VolumeBitMap(make([]bitmapPart, (blocks+(512*8)-1)/(512*8)))
+	for i := range vbm {
+		vbm[i].SetBlock(startBlock + uint16(i))
+	}
 	for b := 0; b < int(blocks); b++ {
 		vbm.MarkUnused(uint16(b))
 	}
@@ -36,9 +71,9 @@ func (vbm VolumeBitMap) mark(block uint16, set bool) {
 	blockByteIndex := byteIndex % 512
 	bit := byte(1 << (7 - (block & 7)))
 	if set {
-		vbm[blockIndex][blockByteIndex] |= bit
+		vbm[blockIndex].data[blockByteIndex] |= bit
 	} else {
-		vbm[blockIndex][blockByteIndex] &^= bit
+		vbm[blockIndex].data[blockByteIndex] &^= bit
 	}
 }
 
@@ -49,29 +84,26 @@ func (vbm VolumeBitMap) IsFree(block uint16) bool {
 	blockIndex := byteIndex / 512
 	blockByteIndex := byteIndex % 512
 	bit := byte(1 << (7 - (block & 7)))
-	return vbm[blockIndex][blockByteIndex]&bit > 0
+	return vbm[blockIndex].data[blockByteIndex]&bit > 0
 }
 
 // ReadVolumeBitMap
 func ReadVolumeBitMap(bd disk.BlockDevice, startBlock uint16) (VolumeBitMap, error) {
 	blocks := bd.Blocks() / 4096
-	vbm := make([]disk.Block, blocks)
-	for i := uint16(0); i < blocks; i++ {
-		block, err := bd.ReadBlock(startBlock + i)
-		if err != nil {
-			return nil, fmt.Errorf("cannot read block %d of Volume Bit Map: %v", err)
+	vbm := NewVolumeBitMap(startBlock, blocks)
+	for i := 0; i < len(vbm); i++ {
+		if err := disk.UnmarshalBlock(bd, &vbm[i], vbm[i].GetBlock()); err != nil {
+			return nil, fmt.Errorf("cannot read block %d (device block %d) of Volume Bit Map: %v", i, vbm[i].GetBlock(), err)
 		}
-		vbm[i] = block
 	}
 	return VolumeBitMap(vbm), nil
 }
 
-// Write writes the Volume Bit Map to a block device, starting at the
-// given block.
-func (vbm VolumeBitMap) Write(bd disk.BlockDevice, startBlock uint16) error {
-	for i, block := range vbm {
-		if err := bd.WriteBlock(startBlock+uint16(i), block); err != nil {
-			return fmt.Errorf("cannot write block %d of Volume Bit Map: %v", err)
+// Write writes the Volume Bit Map to a block device.
+func (vbm VolumeBitMap) Write(bd disk.BlockDevice) error {
+	for i, bp := range vbm {
+		if err := disk.MarshalBlock(bd, bp); err != nil {
+			return fmt.Errorf("cannot write block %d (device block %d) of Volume Bit Map: %v", i, bp.GetBlock(), err)
 		}
 	}
 	return nil
