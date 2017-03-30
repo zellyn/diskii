@@ -20,7 +20,10 @@ func TestVolumeDirectoryKeyBlockMarshalRoundtrip(t *testing.T) {
 	b1 := randomBlock()
 	vdkb := &VolumeDirectoryKeyBlock{}
 	vdkb.FromBlock(b1)
-	b2 := vdkb.ToBlock()
+	b2, err := vdkb.ToBlock()
+	if err != nil {
+		t.Fatal(err)
+	}
 	if b1 != b2 {
 		t.Fatalf("Blocks differ: %s", strings.Join(pretty.Diff(b1[:], b2[:]), "; "))
 	}
@@ -36,7 +39,10 @@ func TestVolumeDirectoryBlockMarshalRoundtrip(t *testing.T) {
 	b1 := randomBlock()
 	vdb := &VolumeDirectoryBlock{}
 	vdb.FromBlock(b1)
-	b2 := vdb.ToBlock()
+	b2, err := vdb.ToBlock()
+	if err != nil {
+		t.Fatal(err)
+	}
 	if b1 != b2 {
 		t.Fatalf("Blocks differ: %s", strings.Join(pretty.Diff(b1[:], b2[:]), "; "))
 	}
@@ -52,7 +58,10 @@ func TestSubdirectoryKeyBlockMarshalRoundtrip(t *testing.T) {
 	b1 := randomBlock()
 	skb := &SubdirectoryKeyBlock{}
 	skb.FromBlock(b1)
-	b2 := skb.ToBlock()
+	b2, err := skb.ToBlock()
+	if err != nil {
+		t.Fatal(err)
+	}
 	if b1 != b2 {
 		t.Fatalf("Blocks differ: %s", strings.Join(pretty.Diff(b1[:], b2[:]), "; "))
 	}
@@ -68,7 +77,10 @@ func TestSubdirectoryBlockMarshalRoundtrip(t *testing.T) {
 	b1 := randomBlock()
 	sb := &SubdirectoryBlock{}
 	sb.FromBlock(b1)
-	b2 := sb.ToBlock()
+	b2, err := sb.ToBlock()
+	if err != nil {
+		t.Fatal(err)
+	}
 	if b1 != b2 {
 		t.Fatalf("Blocks differ: %s", strings.Join(pretty.Diff(b1[:], b2[:]), "; "))
 	}

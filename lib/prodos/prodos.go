@@ -33,6 +33,10 @@ type bitmapPart struct {
 	data disk.Block
 }
 
+// Ensure that bitmapPart is valid BlockSource and BlockSink.
+var _ disk.BlockSource = (*bitmapPart)(nil)
+var _ disk.BlockSink = (*bitmapPart)(nil)
+
 // FromBlock unmarshals a bitmapPart from a Block.
 func (bp *bitmapPart) FromBlock(block disk.Block) error {
 	bp.data = block
@@ -87,7 +91,8 @@ func (vbm VolumeBitMap) IsFree(block uint16) bool {
 	return vbm[blockIndex].data[blockByteIndex]&bit > 0
 }
 
-// ReadVolumeBitMap
+// ReadVolumeBitMap reads the entire volume bitmap from a block
+// device.
 func ReadVolumeBitMap(bd disk.BlockDevice, startBlock uint16) (VolumeBitMap, error) {
 	blocks := bd.Blocks() / 4096
 	vbm := NewVolumeBitMap(startBlock, blocks)
@@ -145,6 +150,7 @@ func (dt DateTime) Validate(fieldDescription string) (errors []error) {
 // VolumeDirectoryKeyBlock is the struct used to hold the ProDOS Volume Directory Key
 // Block structure.  See page 4-4 of Beneath Apple ProDOS.
 type VolumeDirectoryKeyBlock struct {
+	blockBase
 	Prev        uint16 // Pointer to previous block (always zero: the KeyBlock is the first Volume Directory block
 	Next        uint16 // Pointer to next block in the Volume Directory
 	Header      VolumeDirectoryHeader
@@ -152,8 +158,12 @@ type VolumeDirectoryKeyBlock struct {
 	Extra       byte // Trailing byte (so we don't lose it)
 }
 
+// Ensure that VolumeDirectoryKeyBlock is valid BlockSource and BlockSink.
+var _ disk.BlockSource = (*VolumeDirectoryKeyBlock)(nil)
+var _ disk.BlockSink = (*VolumeDirectoryKeyBlock)(nil)
+
 // ToBlock marshals the VolumeDirectoryKeyBlock to a Block of bytes.
-func (vdkb VolumeDirectoryKeyBlock) ToBlock() disk.Block {
+func (vdkb VolumeDirectoryKeyBlock) ToBlock() (disk.Block, error) {
 	var block disk.Block
 	binary.LittleEndian.PutUint16(block[0x0:0x2], vdkb.Prev)
 	binary.LittleEndian.PutUint16(block[0x2:0x4], vdkb.Next)
@@ -162,11 +172,11 @@ func (vdkb VolumeDirectoryKeyBlock) ToBlock() disk.Block {
 		copyBytes(block[0x2b+i*0x27:0x2b+(i+1)*0x27], desc.toBytes())
 	}
 	block[511] = vdkb.Extra
-	return block
+	return block, nil
 }
 
 // FromBlock unmarshals a Block of bytes into a VolumeDirectoryKeyBlock.
-func (vdkb *VolumeDirectoryKeyBlock) FromBlock(block disk.Block) {
+func (vdkb *VolumeDirectoryKeyBlock) FromBlock(block disk.Block) error {
 	vdkb.Prev = binary.LittleEndian.Uint16(block[0x0:0x2])
 	vdkb.Next = binary.LittleEndian.Uint16(block[0x2:0x4])
 	vdkb.Header.fromBytes(block[0x04:0x2b])
@@ -174,6 +184,7 @@ func (vdkb *VolumeDirectoryKeyBlock) FromBlock(block disk.Block) {
 		vdkb.Descriptors[i].fromBytes(block[0x2b+i*0x27 : 0x2b+(i+1)*0x27])
 	}
 	vdkb.Extra = block[511]
+	return nil
 }
 
 // Validate validates a VolumeDirectoryKeyBlock for valid values.
@@ -193,14 +204,19 @@ func (vdkb VolumeDirectoryKeyBlock) Validate() (errors []error) {
 
 // VolumeDirectoryBlock is a normal (non-key) segment in the Volume Directory Header.
 type VolumeDirectoryBlock struct {
+	blockBase
 	Prev        uint16 // Pointer to previous block in the Volume Directory.
 	Next        uint16 // Pointer to next block in the Volume Directory.
 	Descriptors [13]FileDescriptor
 	Extra       byte // Trailing byte (so we don't lose it)
 }
 
+// Ensure that VolumeDirectoryBlock is valid BlockSource and BlockSink.
+var _ disk.BlockSource = (*VolumeDirectoryBlock)(nil)
+var _ disk.BlockSink = (*VolumeDirectoryBlock)(nil)
+
 // ToBlock marshals a VolumeDirectoryBlock to a Block of bytes.
-func (vdb VolumeDirectoryBlock) ToBlock() disk.Block {
+func (vdb VolumeDirectoryBlock) ToBlock() (disk.Block, error) {
 	var block disk.Block
 	binary.LittleEndian.PutUint16(block[0x0:0x2], vdb.Prev)
 	binary.LittleEndian.PutUint16(block[0x2:0x4], vdb.Next)
@@ -208,17 +224,18 @@ func (vdb VolumeDirectoryBlock) ToBlock() disk.Block {
 		copyBytes(block[0x04+i*0x27:0x04+(i+1)*0x27], desc.toBytes())
 	}
 	block[511] = vdb.Extra
-	return block
+	return block, nil
 }
 
 // FromBlock unmarshals a Block of bytes into a VolumeDirectoryBlock.
-func (vdb *VolumeDirectoryBlock) FromBlock(block disk.Block) {
+func (vdb *VolumeDirectoryBlock) FromBlock(block disk.Block) error {
 	vdb.Prev = binary.LittleEndian.Uint16(block[0x0:0x2])
 	vdb.Next = binary.LittleEndian.Uint16(block[0x2:0x4])
 	for i := range vdb.Descriptors {
 		vdb.Descriptors[i].fromBytes(block[0x4+i*0x27 : 0x4+(i+1)*0x27])
 	}
 	vdb.Extra = block[511]
+	return nil
 }
 
 // Validate validates a VolumeDirectoryBlock for valid values.
@@ -392,6 +409,7 @@ func (i IndexBlock) Set(blockNum byte, block uint16) {
 // SubdirectoryKeyBlock is the struct used to hold the first entry in
 // a subdirectory structure.
 type SubdirectoryKeyBlock struct {
+	blockBase
 	Prev        uint16 // Pointer to previous block (always zero: the KeyBlock is the first Volume Directory block
 	Next        uint16 // Pointer to next block in the Volume Directory
 	Header      SubdirectoryHeader
@@ -399,8 +417,12 @@ type SubdirectoryKeyBlock struct {
 	Extra       byte // Trailing byte (so we don't lose it)
 }
 
+// Ensure that SubdirectoryKeyBlock is valid BlockSource and BlockSink.
+var _ disk.BlockSource = (*SubdirectoryKeyBlock)(nil)
+var _ disk.BlockSink = (*SubdirectoryKeyBlock)(nil)
+
 // ToBlock marshals the SubdirectoryKeyBlock to a Block of bytes.
-func (skb SubdirectoryKeyBlock) ToBlock() disk.Block {
+func (skb SubdirectoryKeyBlock) ToBlock() (disk.Block, error) {
 	var block disk.Block
 	binary.LittleEndian.PutUint16(block[0x0:0x2], skb.Prev)
 	binary.LittleEndian.PutUint16(block[0x2:0x4], skb.Next)
@@ -409,11 +431,11 @@ func (skb SubdirectoryKeyBlock) ToBlock() disk.Block {
 		copyBytes(block[0x2b+i*0x27:0x2b+(i+1)*0x27], desc.toBytes())
 	}
 	block[511] = skb.Extra
-	return block
+	return block, nil
 }
 
 // FromBlock unmarshals a Block of bytes into a SubdirectoryKeyBlock.
-func (skb *SubdirectoryKeyBlock) FromBlock(block disk.Block) {
+func (skb *SubdirectoryKeyBlock) FromBlock(block disk.Block) error {
 	skb.Prev = binary.LittleEndian.Uint16(block[0x0:0x2])
 	skb.Next = binary.LittleEndian.Uint16(block[0x2:0x4])
 	skb.Header.fromBytes(block[0x04:0x2b])
@@ -421,6 +443,7 @@ func (skb *SubdirectoryKeyBlock) FromBlock(block disk.Block) {
 		skb.Descriptors[i].fromBytes(block[0x2b+i*0x27 : 0x2b+(i+1)*0x27])
 	}
 	skb.Extra = block[511]
+	return nil
 }
 
 // Validate validates a SubdirectoryKeyBlock for valid values.
@@ -440,14 +463,19 @@ func (skb SubdirectoryKeyBlock) Validate() (errors []error) {
 
 // SubdirectoryBlock is a normal (non-key) segment in a Subdirectory.
 type SubdirectoryBlock struct {
+	blockBase
 	Prev        uint16 // Pointer to previous block in the Volume Directory.
 	Next        uint16 // Pointer to next block in the Volume Directory.
 	Descriptors [13]FileDescriptor
 	Extra       byte // Trailing byte (so we don't lose it)
 }
 
+// Ensure that SubdirectoryBlock is valid BlockSource and BlockSink.
+var _ disk.BlockSource = (*SubdirectoryBlock)(nil)
+var _ disk.BlockSink = (*SubdirectoryBlock)(nil)
+
 // ToBlock marshals a SubdirectoryBlock to a Block of bytes.
-func (sb SubdirectoryBlock) ToBlock() disk.Block {
+func (sb SubdirectoryBlock) ToBlock() (disk.Block, error) {
 	var block disk.Block
 	binary.LittleEndian.PutUint16(block[0x0:0x2], sb.Prev)
 	binary.LittleEndian.PutUint16(block[0x2:0x4], sb.Next)
@@ -455,17 +483,18 @@ func (sb SubdirectoryBlock) ToBlock() disk.Block {
 		copyBytes(block[0x04+i*0x27:0x04+(i+1)*0x27], desc.toBytes())
 	}
 	block[511] = sb.Extra
-	return block
+	return block, nil
 }
 
 // FromBlock unmarshals a Block of bytes into a SubdirectoryBlock.
-func (sb *SubdirectoryBlock) FromBlock(block disk.Block) {
+func (sb *SubdirectoryBlock) FromBlock(block disk.Block) error {
 	sb.Prev = binary.LittleEndian.Uint16(block[0x0:0x2])
 	sb.Next = binary.LittleEndian.Uint16(block[0x2:0x4])
 	for i := range sb.Descriptors {
 		sb.Descriptors[i].fromBytes(block[0x4+i*0x27 : 0x4+(i+1)*0x27])
 	}
 	sb.Extra = block[511]
+	return nil
 }
 
 // Validate validates a SubdirectoryBlock for valid values.
