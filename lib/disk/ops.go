@@ -19,6 +19,7 @@ type Descriptor struct {
 	Name     string
 	Fullname string // If there's a more complete filename (eg. Super-Mon), put it here.
 	Sectors  int
+	Blocks   int
 	Length   int
 	Locked   bool
 	Type     Filetype

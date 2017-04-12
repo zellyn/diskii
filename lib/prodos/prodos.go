@@ -340,6 +340,18 @@ type FileDescriptor struct {
 	HeaderPointer uint16 // Block  number of the key block for the directory which describes this file.
 }
 
+// descriptor returns a disk.Descriptor for a FileDescriptor.
+func (fd FileDescriptor) descriptor() disk.Descriptor {
+	desc := disk.Descriptor{
+		Name:   fd.Name(),
+		Blocks: int(fd.BlocksUsed),
+		Length: int(fd.Eof[0]) + int(fd.Eof[1])<<8 + int(fd.Eof[2])<<16,
+		Locked: false, // TODO(zellyn): use prodos-style access in disk.Descriptor
+		Type:   disk.Filetype(fd.FileType),
+	}
+	return desc
+}
+
 // Name returns the string filename of a file descriptor.
 func (fd FileDescriptor) Name() string {
 	return string(fd.FileName[0 : fd.TypeAndNameLength&0xf])
@@ -578,6 +590,51 @@ func (sh SubdirectoryHeader) Validate() (errors []error) {
 // Name returns the string filename of a subdirectory header.
 func (sh SubdirectoryHeader) Name() string {
 	return string(sh.SubdirectoryName[0 : sh.TypeAndNameLength&0xf])
+}
+
+// Volume is the in-memory representation of a device's volume
+// information.
+type Volume struct {
+	keyBlock *VolumeDirectoryKeyBlock
+	blocks   []*VolumeDirectoryBlock
+	bitmap   *VolumeBitMap
+	subdirs  map[uint16]*Subdirectory
+}
+
+// Subdirectory is the in-memory representation of a single
+// subdirectory's information.
+type Subdirectory struct {
+	keyBlock *SubdirectoryKeyBlock
+	blocks   []*SubdirectoryBlock
+}
+
+// readVolume reads the entire volume and subdirectories frmo a disk
+// into memory.
+func readVolume(bd disk.BlockDevice) (Volume, error) {
+	v := Volume{
+		keyBlock: &VolumeDirectoryKeyBlock{},
+		subdirs:  make(map[uint16]*Subdirectory),
+	}
+
+	if err := disk.UnmarshalBlock(bd, v.keyBlock, 2); err != nil {
+		return v, fmt.Errorf("cannot read first block of volume directory (block 2): %v", err)
+	}
+
+	if vbm, err := ReadVolumeBitMap(bd, v.keyBlock.Header.BitMapPointer); err != nil {
+		return v, err
+	} else {
+		v.bitmap = &vbm
+	}
+
+	for block := v.keyBlock.Next; block != 0; block = v.blocks[len(v.blocks)-1].Next {
+		vdb := VolumeDirectoryBlock{}
+		if err := disk.UnmarshalBlock(bd, &vdb, block); err != nil {
+			return v, err
+		}
+		v.blocks = append(v.blocks, &vdb)
+	}
+
+	return v, nil
 }
 
 // copyBytes is just like the builtin copy, but just for byte slices,
