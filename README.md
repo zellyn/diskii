@@ -46,7 +46,7 @@ Current disk operations supported:
 | Feature          | DOS 3.3  | ProDOS | NakedOS/Super-Mon  |
 | ---------------- | -------- | ------ | ------------------ |
 | basic structures | ✓        | ✓      | ✓                  |
-| ls               | ✓        | ✗      | ✓                  |
+| ls               | ✓        | ✓      | ✓                  |
 | dump             | ✓        | ✗      | ✓                  |
 | put              | ✗        | ✗      | ✓                  |
 | dumptext         | ✗        | ✗      | ✗                  |

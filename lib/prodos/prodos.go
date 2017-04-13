@@ -1,6 +1,6 @@
 // Copyright © 2017 Zellyn Hunter <zellyn@gmail.com>
 
-// Package prodos contains routines for working with the on-disk
+// Package prodos contains routines for working with the on-device
 // structures of Apple ProDOS.
 package prodos
 
@@ -10,6 +10,17 @@ import (
 	"io"
 
 	"github.com/zellyn/diskii/lib/disk"
+)
+
+// Storage types.
+const (
+	TypeDeleted               = 0
+	TypeSeedling              = 0x1
+	TypeSapling               = 0x2
+	TypeTree                  = 0x3
+	TypeSubdirectory          = 0xD
+	TypeSubdirectoryHeader    = 0xE
+	TypeVolumeDirectoryHeader = 0xF
 )
 
 // blockBase represents a 512-byte block of data.
@@ -91,9 +102,9 @@ func (vbm VolumeBitMap) IsFree(block uint16) bool {
 	return vbm[blockIndex].data[blockByteIndex]&bit > 0
 }
 
-// ReadVolumeBitMap reads the entire volume bitmap from a block
+// readVolumeBitMap reads the entire volume bitmap from a block
 // device.
-func ReadVolumeBitMap(bd disk.BlockDevice, startBlock uint16) (VolumeBitMap, error) {
+func readVolumeBitMap(bd disk.BlockDevice, startBlock uint16) (VolumeBitMap, error) {
 	blocks := bd.Blocks() / 4096
 	vbm := NewVolumeBitMap(startBlock, blocks)
 	for i := 0; i < len(vbm); i++ {
@@ -357,6 +368,11 @@ func (fd FileDescriptor) Name() string {
 	return string(fd.FileName[0 : fd.TypeAndNameLength&0xf])
 }
 
+// Type returns the type of a file descriptor.
+func (fd FileDescriptor) Type() byte {
+	return fd.TypeAndNameLength >> 4
+}
+
 // toBytes converts a FileDescriptor to a slice of bytes.
 func (fd FileDescriptor) toBytes() []byte {
 	buf := make([]byte, 0x27)
@@ -595,10 +611,11 @@ func (sh SubdirectoryHeader) Name() string {
 // Volume is the in-memory representation of a device's volume
 // information.
 type Volume struct {
-	keyBlock *VolumeDirectoryKeyBlock
-	blocks   []*VolumeDirectoryBlock
-	bitmap   *VolumeBitMap
-	subdirs  map[uint16]*Subdirectory
+	keyBlock       *VolumeDirectoryKeyBlock
+	blocks         []*VolumeDirectoryBlock
+	bitmap         *VolumeBitMap
+	subdirsByBlock map[uint16]*Subdirectory
+	subdirsByName  map[string]*Subdirectory
 }
 
 // Subdirectory is the in-memory representation of a single
@@ -608,19 +625,45 @@ type Subdirectory struct {
 	blocks   []*SubdirectoryBlock
 }
 
-// readVolume reads the entire volume and subdirectories frmo a disk
+// descriptors returns a slice of all top-level file descriptors in a
+// volume, deleted or not.
+func (v Volume) descriptors() []FileDescriptor {
+	var descs []FileDescriptor
+
+	descs = append(descs, v.keyBlock.Descriptors[:]...)
+	for _, block := range v.blocks {
+		descs = append(descs, block.Descriptors[:]...)
+	}
+	return descs
+}
+
+// subdirDescriptors returns a slice of all top-level file descriptors
+// in a volume that are subdirectories.
+func (v Volume) subdirDescriptors() []FileDescriptor {
+	var descs []FileDescriptor
+
+	for _, desc := range v.descriptors() {
+		if desc.Type() == TypeSubdirectory {
+			descs = append(descs, desc)
+		}
+	}
+	return descs
+}
+
+// readVolume reads the entire volume and subdirectories from a device
 // into memory.
-func readVolume(bd disk.BlockDevice) (Volume, error) {
+func readVolume(bd disk.BlockDevice, keyBlock uint16) (Volume, error) {
 	v := Volume{
-		keyBlock: &VolumeDirectoryKeyBlock{},
-		subdirs:  make(map[uint16]*Subdirectory),
+		keyBlock:       &VolumeDirectoryKeyBlock{},
+		subdirsByBlock: make(map[uint16]*Subdirectory),
+		subdirsByName:  make(map[string]*Subdirectory),
 	}
 
-	if err := disk.UnmarshalBlock(bd, v.keyBlock, 2); err != nil {
-		return v, fmt.Errorf("cannot read first block of volume directory (block 2): %v", err)
+	if err := disk.UnmarshalBlock(bd, v.keyBlock, keyBlock); err != nil {
+		return v, fmt.Errorf("cannot read first block of volume directory (block %d): %v", keyBlock, err)
 	}
 
-	if vbm, err := ReadVolumeBitMap(bd, v.keyBlock.Header.BitMapPointer); err != nil {
+	if vbm, err := readVolumeBitMap(bd, v.keyBlock.Header.BitMapPointer); err != nil {
 		return v, err
 	} else {
 		v.bitmap = &vbm
@@ -634,7 +677,98 @@ func readVolume(bd disk.BlockDevice) (Volume, error) {
 		v.blocks = append(v.blocks, &vdb)
 	}
 
+	sdds := v.subdirDescriptors()
+
+	for i := 0; i < len(sdds); i++ {
+		sdd := sdds[i]
+		sub, err := readSubdirectory(bd, sdd)
+		if err != nil {
+			return v, err
+		}
+		v.subdirsByBlock[sdd.KeyPointer] = &sub
+		sdds = append(sdds, sub.subdirDescriptors()...)
+	}
+
+	for _, sd := range v.subdirsByBlock {
+		name := sd.keyBlock.Header.Name()
+		parentName, err := parentDirName(sd.keyBlock.Header.ParentPointer, keyBlock, v.subdirsByBlock)
+		if err != nil {
+			return v, err
+		}
+		if parentName != "" {
+			name = parentName + "/" + name
+		}
+
+		v.subdirsByName[name] = sd
+	}
 	return v, nil
+}
+
+// descriptors returns a slice of all top-level file descriptors in a
+// subdirectory, deleted or not.
+func (s Subdirectory) descriptors() []FileDescriptor {
+	var descs []FileDescriptor
+
+	descs = append(descs, s.keyBlock.Descriptors[:]...)
+	for _, block := range s.blocks {
+		descs = append(descs, block.Descriptors[:]...)
+	}
+	return descs
+}
+
+// subdirDescriptors returns a slice of all top-level file descriptors
+// in a subdirectory that are subdirectories.
+func (s Subdirectory) subdirDescriptors() []FileDescriptor {
+	var descs []FileDescriptor
+
+	for _, desc := range s.descriptors() {
+		if desc.Type() == TypeSubdirectory {
+			descs = append(descs, desc)
+		}
+	}
+	return descs
+}
+
+// fullDirName returns the full recursive directory name of the given parent directory.
+func parentDirName(parentDirectoryBlock uint16, keyBlock uint16, subdirMap map[uint16]*Subdirectory) (string, error) {
+	if parentDirectoryBlock == keyBlock {
+		return "", nil
+	}
+	sd := subdirMap[parentDirectoryBlock]
+	if sd == nil {
+		return "", fmt.Errorf("Unable to find subdirectory for block %d", parentDirectoryBlock)
+	}
+	parentName, err := parentDirName(sd.keyBlock.Header.ParentPointer, keyBlock, subdirMap)
+	if err != nil {
+		return "", err
+	}
+	if parentName == "" {
+		return sd.keyBlock.Header.Name(), nil
+	}
+
+	return parentName + "/" + sd.keyBlock.Header.Name(), nil
+}
+
+// readSubdirectory reads a single subdirectory from a device into
+// memory.
+func readSubdirectory(bd disk.BlockDevice, fd FileDescriptor) (Subdirectory, error) {
+	s := Subdirectory{
+		keyBlock: &SubdirectoryKeyBlock{},
+	}
+
+	if err := disk.UnmarshalBlock(bd, s.keyBlock, fd.KeyPointer); err != nil {
+		return s, fmt.Errorf("cannot read first block of subdirectory %q (block %d): %v", fd.Name(), fd.KeyPointer, err)
+	}
+
+	for block := s.keyBlock.Next; block != 0; block = s.blocks[len(s.blocks)-1].Next {
+		sdb := SubdirectoryBlock{}
+		if err := disk.UnmarshalBlock(bd, &sdb, block); err != nil {
+			return s, err
+		}
+		s.blocks = append(s.blocks, &sdb)
+	}
+
+	return s, nil
 }
 
 // copyBytes is just like the builtin copy, but just for byte slices,
@@ -672,18 +806,34 @@ func (o operator) HasSubdirs() bool {
 // Catalog returns a catalog of disk entries. subdir should be empty
 // for operating systems that do not support subdirectories.
 func (o operator) Catalog(subdir string) ([]disk.Descriptor, error) {
-	return nil, fmt.Errorf("%s doesn't implement Catalog yet", operatorName)
-	/*
-		fds, _, err := ReadCatalog(o.dev)
-		if err != nil {
-			return nil, err
+
+	vol, err := readVolume(o.dev, 2)
+	if err != nil {
+		return nil, err
+	}
+
+	var result []disk.Descriptor
+
+	if subdir == "" {
+		for _, desc := range vol.descriptors() {
+			if desc.Type() != TypeDeleted {
+				result = append(result, desc.descriptor())
+			}
 		}
-		descs := make([]disk.Descriptor, 0, len(fds))
-		for _, fd := range fds {
-			descs = append(descs, fd.descriptor())
+		return result, nil
+	}
+
+	sd, ok := vol.subdirsByName[subdir]
+	if !ok {
+		return nil, fmt.Errorf("subdirectory %q not found", subdir)
+	}
+
+	for _, desc := range sd.descriptors() {
+		if desc.Type() != TypeDeleted {
+			result = append(result, desc.descriptor())
 		}
-		return descs, nil
-	*/
+	}
+	return result, nil
 }
 
 // GetFile retrieves a file by name.
