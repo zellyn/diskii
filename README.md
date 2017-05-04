@@ -103,3 +103,5 @@ will be likely to get priority.
 - https://github.com/thecompu/Driv3rs - A Python Script to work with Apple III SOS DSK files
 - http://www.callapple.org/software/an-a-p-p-l-e-review-shink-fit-x-for-mac-os-x
 - https://github.com/dmolony/DiskBrowser - graphical (Java) disk browser that knows how to interpret and display many file formats
+- https://github.com/slotek/apple2-disk-util - ruby
+- https://github.com/slotek/dsk2nib - C
