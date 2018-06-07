@@ -69,6 +69,8 @@ type SectorDisk interface {
 	Tracks() byte
 	// Write writes the disk contents to the given file.
 	Write(io.Writer) (int, error)
+	// Order returns the sector order.
+	Order() string
 }
 
 // LogicalSectorDisk is the interface used to read and write a disk by
@@ -86,6 +88,8 @@ type LogicalSectorDisk interface {
 	Tracks() byte
 	// Write writes the disk contents to the given file.
 	Write(io.Writer) (int, error)
+	// Order returns the underlying sector ordering.
+	Order() string
 }
 
 // MappedDisk wraps a SectorDisk as a LogicalSectorDisk, handling the
@@ -154,6 +158,11 @@ func (md MappedDisk) Tracks() byte {
 // Write writes the disk contents to the given file.
 func (md MappedDisk) Write(w io.Writer) (n int, err error) {
 	return md.sectorDisk.Write(w)
+}
+
+// Order returns the sector order of the underlying sector disk.
+func (md MappedDisk) Order() string {
+	return md.sectorDisk.Order()
 }
 
 // OpenDisk opens a disk image by filename.
@@ -282,6 +291,11 @@ func (dbv DiskBlockDevice) WriteBlock(index uint16, data Block) error {
 // Blocks returns the number of blocks on the device.
 func (dbv DiskBlockDevice) Blocks() uint16 {
 	return dbv.blocks
+}
+
+// Order returns the underlying sector or block order of the storage.
+func (dbv DiskBlockDevice) Order() string {
+	return dbv.lsd.Order()
 }
 
 // Write writes the device contents to the given Writer.

@@ -29,6 +29,8 @@ type Descriptor struct {
 type Operator interface {
 	// Name returns the name of the operator.
 	Name() string
+	// Order returns the sector or block order name.
+	Order() string
 	// HasSubdirs returns true if the underlying operating system on the
 	// disk allows subdirectories.
 	HasSubdirs() bool

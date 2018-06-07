@@ -17,6 +17,7 @@ type DSK struct {
 	physicalToStored []byte // Map of physical on-disk sector numbers to sectors in the disk image
 	bytesPerTrack    int    // Number of bytes per track
 	tracks           byte   // Number of tracks
+	order            string // Underlying sector order.
 }
 
 var _ SectorDisk = (*DSK)(nil)
@@ -37,6 +38,7 @@ func LoadDSK(filename string) (DSK, error) {
 		physicalToStored: Dos33PhysicalToLogicalSectorMap,
 		bytesPerTrack:    16 * 256,
 		tracks:           DOS33Tracks,
+		order:            "dos33",
 	}, nil
 }
 
@@ -48,6 +50,7 @@ func Empty() DSK {
 		physicalToStored: Dos33PhysicalToLogicalSectorMap,
 		bytesPerTrack:    16 * 256,
 		tracks:           DOS33Tracks,
+		order:            "dos33",
 	}
 }
 
@@ -95,6 +98,11 @@ func (d DSK) Sectors() byte {
 // Tracks returns the number of tracks on the DSK image.
 func (d DSK) Tracks() byte {
 	return d.tracks
+}
+
+// Order returns the sector order name.
+func (d DSK) Order() string {
+	return d.order
 }
 
 // Write writes the disk contents to the given file.

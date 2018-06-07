@@ -566,6 +566,11 @@ func (o operator) Name() string {
 	return operatorName
 }
 
+// Order returns the sector or block order of the underlying storage.
+func (o operator) Order() string {
+	return o.lsd.Order()
+}
+
 // HasSubdirs returns true if the underlying operating system on the
 // disk allows subdirectories.
 func (o operator) HasSubdirs() bool {

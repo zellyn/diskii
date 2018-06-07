@@ -11,6 +11,7 @@ import (
 )
 
 var shortnames bool // flag for whether to print short filenames
+var debug bool
 
 // catalogCmd represents the cat command, used to catalog a disk or
 // directory.
@@ -30,6 +31,7 @@ var catalogCmd = &cobra.Command{
 func init() {
 	RootCmd.AddCommand(catalogCmd)
 	catalogCmd.Flags().BoolVarP(&shortnames, "shortnames", "s", false, "whether to print short filenames (only makes a difference on Super-Mon disks)")
+	catalogCmd.Flags().BoolVarP(&debug, "debug", "d", false, "pring debug information")
 }
 
 // runCat performs the actual catalog logic.
@@ -40,6 +42,9 @@ func runCat(args []string) error {
 	op, err := disk.Open(args[0])
 	if err != nil {
 		return err
+	}
+	if debug {
+		fmt.Printf("Got disk of type %q with underlying sector/block order %q.\n", op.Name(), op.Order())
 	}
 	subdir := ""
 	if len(args) == 2 {

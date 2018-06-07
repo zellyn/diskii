@@ -23,6 +23,8 @@ type BlockDevice interface {
 	Blocks() uint16
 	// Write writes the device contents to the given Writer.
 	Write(io.Writer) (int, error)
+	// Order returns the sector or block order of the underlying device.
+	Order() string
 }
 
 // SectorSource is the interface for types that can marshal to sectors.

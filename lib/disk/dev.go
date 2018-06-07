@@ -61,6 +61,11 @@ func (d Dev) Blocks() uint16 {
 	return d.blocks
 }
 
+// Order returns the order of blocks on the device.
+func (d Dev) Order() string {
+	return "prodos"
+}
+
 // Write writes the device contents to the given file.
 func (d Dev) Write(w io.Writer) (n int, err error) {
 	return w.Write(d.data)
