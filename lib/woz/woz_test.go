@@ -17,5 +17,6 @@ func TestBasicLoad(t *testing.T) {
 	if len(wz.Unknowns) > 0 {
 		t.Fatalf("want 0 unknowns; got %d", len(wz.Unknowns))
 	}
-	t.Fatal("NOTHING")
+	// fmt.Printf("%#v\n", wz)
+	// t.Fatal("NOTHING")
 }

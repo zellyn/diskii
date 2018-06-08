@@ -10,10 +10,14 @@ import (
 )
 
 const wozHeader = "WOZ1\xFF\n\r\n"
+const TrackLength = 6656
 
 type Woz struct {
 	Info     Info
 	Unknowns []UnknownChunk
+	TMap     [160]uint8
+	TRKS     []TRK
+	Metadata Metadata
 }
 
 type UnknownChunk struct {
@@ -35,6 +39,21 @@ type Info struct {
 	Synchronized   bool
 	Cleaned        bool
 	Creator        string
+}
+
+type TRK struct {
+	BitStream      [6646]uint8
+	BytesUsed      uint16
+	BitCount       uint16
+	SplicePoint    uint16
+	SpliceNibble   uint8
+	SpliceBitCount uint8
+	Reserved       uint16
+}
+
+type Metadata struct {
+	Keys      []string
+	RawValues map[string]string
 }
 
 type decoder struct {
@@ -123,26 +142,64 @@ func (d *decoder) parseINFO(length uint32) error {
 		return err
 	}
 	d.crc.Write(d.tmp[:length])
+
+	d.woz.Info.Version = d.tmp[0]
+	d.woz.Info.DiskType = DiskType(d.tmp[1])
+	d.woz.Info.WriteProtected = d.tmp[2] == 1
+	d.woz.Info.Synchronized = d.tmp[3] == 1
+	d.woz.Info.Cleaned = d.tmp[4] == 1
+	d.woz.Info.Creator = strings.TrimRight(string(d.tmp[5:37]), " ")
+
 	return nil
 }
 
 func (d *decoder) parseTMAP(length uint32) error {
 	d.info("TMAP chunk!\n")
-	buf := make([]byte, length)
-	if _, err := io.ReadFull(d.r, buf); err != nil {
+	if length != 160 {
+		d.warn("expected TMAP chunk length of 160; got %d", length)
+	}
+	if _, err := io.ReadFull(d.r, d.woz.TMap[:]); err != nil {
 		return err
 	}
-	d.crc.Write(buf)
+	d.crc.Write(d.woz.TMap[:])
 	return nil
 }
 
 func (d *decoder) parseTRKS(length uint32) error {
 	d.info("TRKS chunk!\n")
+	if length%TrackLength != 0 {
+		return FormatError(fmt.Sprintf("expected TRKS chunk length to be a multiple of %d; got %d", TrackLength, length))
+	}
 	buf := make([]byte, length)
 	if _, err := io.ReadFull(d.r, buf); err != nil {
 		return err
 	}
 	d.crc.Write(buf)
+
+	for offset := 0; offset < int(length); offset += TrackLength {
+		b := buf[offset : offset+TrackLength]
+		t := TRK{
+			BytesUsed:      binary.LittleEndian.Uint16(b[6646:6648]),
+			BitCount:       binary.LittleEndian.Uint16(b[6648:6650]),
+			SplicePoint:    binary.LittleEndian.Uint16(b[6650:6652]),
+			SpliceNibble:   b[6652],
+			SpliceBitCount: b[6653],
+			Reserved:       binary.LittleEndian.Uint16(b[6654:6656]),
+		}
+		copy(t.BitStream[:], b)
+		d.woz.TRKS = append(d.woz.TRKS, t)
+	}
+
+	// type TRK struct {
+	// 	Bitstream      [6646]uint8
+	// 	BytesUsed      uint16
+	// 	BitCount       uint16
+	// 	SplicePoint    uint16
+	// 	SpliceNibble   uint8
+	// 	SpliceBitCount uint8
+	// 	Reserved       uint16
+	// }
+
 	return nil
 }
 
@@ -153,6 +210,21 @@ func (d *decoder) parseMETA(length uint32) error {
 		return err
 	}
 	d.crc.Write(buf)
+	rows := strings.Split(string(buf), "\n")
+	m := &d.woz.Metadata
+	m.RawValues = make(map[string]string, len(rows))
+	for _, row := range rows {
+		parts := strings.SplitN(row, "\t", 2)
+		if len(parts) == 0 {
+			return FormatError("empty metadata line")
+		}
+		if len(parts) == 1 {
+			return FormatError("strange metadata line with no tab: " + parts[0])
+		}
+		m.Keys = append(m.Keys, parts[0])
+		m.RawValues[parts[0]] = parts[1]
+	}
+
 	return nil
 }
 
