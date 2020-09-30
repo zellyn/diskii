@@ -92,7 +92,7 @@ will be likely to get priority.
   - http://retrocomputingaustralia.com/rca-downloads/ Michael Mulhern's MacOS package of CiderPress
 - http://applecommander.sourceforge.net/ - the commandline, cross-platform alternative to CiderPress
 - http://brutaldeluxe.fr/products/crossdevtools/cadius/index.html - Brutal Deluxe's commandline tools
-- https://github.com/paleotronic/dskalyzer - cross-platform disk analysis tool (also written in Go!) from the folks who brought you [Ocalyzer](http://octalyzer.com/).
+- https://github.com/paleotronic/dskalyzer - cross-platform disk analysis tool (also written in Go!) from the folks who brought you [Octalyzer](http://octalyzer.com/).
 - https://github.com/cybernesto/dsktool.rb
 - https://github.com/cmosher01/Apple-II-Disk-Tools
 - https://github.com/madsen/perl-libA2
