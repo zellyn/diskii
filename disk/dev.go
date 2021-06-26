@@ -10,13 +10,14 @@ import (
 	"io/ioutil"
 )
 
+// A ProDOS block.
+type Block [256]byte
+
 // Dev represents a .po disk image.
 type Dev struct {
 	data   []byte // The actual data in the file
 	blocks uint16 // Number of blocks
 }
-
-var _ BlockDevice = (*Dev)(nil)
 
 // LoadDev loads a .po image from a file.
 func LoadDev(filename string) (Dev, error) {

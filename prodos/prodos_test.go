@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/kr/pretty"
-	"github.com/zellyn/diskii/lib/disk"
+	"github.com/zellyn/diskii/disk"
 )
 
 func randomBlock() disk.Block {

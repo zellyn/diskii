@@ -2,10 +2,9 @@ package dos3
 
 import (
 	"crypto/rand"
+	"os"
 	"reflect"
 	"testing"
-
-	"github.com/zellyn/diskii/lib/disk"
 )
 
 // TestVTOCMarshalRoundtrip checks a simple roundtrip of VTOC data.
@@ -76,15 +75,11 @@ func TestTrackSectorListMarshalRoundtrip(t *testing.T) {
 
 // TestReadCatalog tests the reading of the catalog of a test disk.
 func TestReadCatalog(t *testing.T) {
-	sd, err := disk.LoadDSK("testdata/dos33test.dsk")
+	diskbytes, err := os.ReadFile("testdata/dos33test.dsk")
 	if err != nil {
 		t.Fatal(err)
 	}
-	dsk, err := disk.NewMappedDisk(sd, disk.Dos33LogicalToPhysicalSectorMap)
-	if err != nil {
-		t.Fatal(err)
-	}
-	fds, deleted, err := ReadCatalog(dsk)
+	fds, deleted, err := ReadCatalog(diskbytes, false)
 	if err != nil {
 		t.Fatal(err)
 	}

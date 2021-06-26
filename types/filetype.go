@@ -3,7 +3,7 @@
 // filetype.go contains the Filetype type, along with routines for
 // converting to and from strings.
 
-package disk
+package types
 
 import "fmt"
 

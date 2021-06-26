@@ -2,14 +2,7 @@
 
 package cmd
 
-import (
-	"fmt"
-	"os"
-
-	"github.com/spf13/cobra"
-	"github.com/zellyn/diskii/lib/disk"
-)
-
+/*
 // dumpCmd represents the dump command, used to dump the raw contents
 // of a file.
 var dumpCmd = &cobra.Command{
@@ -48,3 +41,4 @@ func runDump(args []string) error {
 	os.Stdout.Write(file.Data)
 	return nil
 }
+*/

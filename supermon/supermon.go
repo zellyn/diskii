@@ -7,12 +7,11 @@ package supermon
 import (
 	"encoding/binary"
 	"fmt"
-	"io"
 	"strconv"
 	"strings"
 
-	"github.com/zellyn/diskii/lib/disk"
-	"github.com/zellyn/diskii/lib/errors"
+	"github.com/zellyn/diskii/disk"
+	"github.com/zellyn/diskii/errors"
 )
 
 const (
@@ -29,17 +28,17 @@ const (
 type SectorMap []byte
 
 // LoadSectorMap loads a NakedOS sector map.
-func LoadSectorMap(sd disk.SectorDisk) (SectorMap, error) {
+func LoadSectorMap(diskbytes []byte) (SectorMap, error) {
 	sm := SectorMap(make([]byte, 560))
-	sector09, err := sd.ReadPhysicalSector(0, 9)
+	sector09, err := disk.ReadSector(diskbytes, 0, 9)
 	if err != nil {
 		return sm, err
 	}
-	sector0A, err := sd.ReadPhysicalSector(0, 0xA)
+	sector0A, err := disk.ReadSector(diskbytes, 0, 0xA)
 	if err != nil {
 		return sm, err
 	}
-	sector0B, err := sd.ReadPhysicalSector(0, 0xB)
+	sector0B, err := disk.ReadSector(diskbytes, 0, 0xB)
 	if err != nil {
 		return sm, err
 	}
@@ -63,19 +62,19 @@ func (sm SectorMap) FirstFreeFile() byte {
 
 // Persist writes the current contenst of a sector map back back to
 // disk.
-func (sm SectorMap) Persist(sd disk.SectorDisk) error {
-	sector09, err := sd.ReadPhysicalSector(0, 9)
+func (sm SectorMap) Persist(diskbytes []byte) error {
+	sector09, err := disk.ReadSector(diskbytes, 0, 9)
 	if err != nil {
 		return err
 	}
 	copy(sector09[0xd0:], sm[0:0x30])
-	if err := sd.WritePhysicalSector(0, 9, sector09); err != nil {
+	if err := disk.WriteSector(diskbytes, 0, 9, sector09); err != nil {
 		return err
 	}
-	if err := sd.WritePhysicalSector(0, 0xA, sm[0x30:0x130]); err != nil {
+	if err := disk.WriteSector(diskbytes, 0, 0xA, sm[0x30:0x130]); err != nil {
 		return err
 	}
-	if err := sd.WritePhysicalSector(0, 0xB, sm[0x130:0x230]); err != nil {
+	if err := disk.WriteSector(diskbytes, 0, 0xB, sm[0x130:0x230]); err != nil {
 		return err
 	}
 	return nil
@@ -167,10 +166,10 @@ func (sm SectorMap) SectorsByFile() map[byte][]disk.TrackSector {
 }
 
 // ReadFile reads the contents of a file.
-func (sm SectorMap) ReadFile(sd disk.SectorDisk, file byte) ([]byte, error) {
+func (sm SectorMap) ReadFile(diskbytes []byte, file byte) ([]byte, error) {
 	var result []byte
 	for _, ts := range sm.SectorsForFile(file) {
-		bytes, err := sd.ReadPhysicalSector(ts.Track, ts.Sector)
+		bytes, err := disk.ReadSector(diskbytes, ts.Track, ts.Sector)
 		if err != nil {
 			return nil, err
 		}
@@ -190,7 +189,7 @@ func (sm SectorMap) Delete(file byte) {
 
 // WriteFile writes the contents of a file. It returns true if the
 // file already existed.
-func (sm SectorMap) WriteFile(sd disk.SectorDisk, file byte, contents []byte, overwrite bool) (bool, error) {
+func (sm SectorMap) WriteFile(diskbytes []byte, file byte, contents []byte, overwrite bool) (bool, error) {
 	sectorsNeeded := (len(contents) + 255) / 256
 	cts := make([]byte, 256*sectorsNeeded)
 	copy(cts, contents)
@@ -209,10 +208,10 @@ func (sm SectorMap) WriteFile(sd disk.SectorDisk, file byte, contents []byte, ov
 
 	i := 0
 OUTER:
-	for track := byte(0); track < sd.Tracks(); track++ {
-		for sector := byte(0); sector < sd.Sectors(); sector++ {
+	for track := byte(0); track < disk.FloppyTracks; track++ {
+		for sector := byte(0); sector < disk.FloppySectors; sector++ {
 			if sm.FileForSector(track, sector) == FileFree {
-				if err := sd.WritePhysicalSector(track, sector, cts[i*256:(i+1)*256]); err != nil {
+				if err := disk.WriteSector(diskbytes, track, sector, cts[i*256:(i+1)*256]); err != nil {
 					return existed, err
 				}
 				if err := sm.SetFileForSector(track, sector, file); err != nil {
@@ -225,7 +224,7 @@ OUTER:
 			}
 		}
 	}
-	if err := sm.Persist(sd); err != nil {
+	if err := sm.Persist(diskbytes); err != nil {
 		return existed, err
 	}
 	return existed, nil
@@ -317,16 +316,16 @@ type SymbolTable []Symbol
 // ReadSymbolTable reads the symbol table from a disk. If there are
 // problems with the symbol table (like it doesn't exist, or the link
 // pointers are problematic), it'll return nil and an error.
-func (sm SectorMap) ReadSymbolTable(sd disk.SectorDisk) (SymbolTable, error) {
+func (sm SectorMap) ReadSymbolTable(diskbytes []byte) (SymbolTable, error) {
 	table := make(SymbolTable, 0, 819)
-	symtbl1, err := sm.ReadFile(sd, 3)
+	symtbl1, err := sm.ReadFile(diskbytes, 3)
 	if err != nil {
 		return nil, err
 	}
 	if len(symtbl1) != 0x1000 {
 		return nil, fmt.Errorf("expected file FSYMTBL1(0x3) to be 0x1000 bytes long; got 0x%04X", len(symtbl1))
 	}
-	symtbl2, err := sm.ReadFile(sd, 4)
+	symtbl2, err := sm.ReadFile(diskbytes, 4)
 	if err != nil {
 		return nil, err
 	}
@@ -380,7 +379,7 @@ func (sm SectorMap) ReadSymbolTable(sd disk.SectorDisk) (SymbolTable, error) {
 }
 
 // WriteSymbolTable writes a symbol table to a disk.
-func (sm SectorMap) WriteSymbolTable(sd disk.SectorDisk, st SymbolTable) error {
+func (sm SectorMap) WriteSymbolTable(diskbytes []byte, st SymbolTable) error {
 	symtbl1 := make([]byte, 0x1000)
 	symtbl2 := make([]byte, 0x1000)
 	for i, sym := range st {
@@ -400,10 +399,10 @@ func (sm SectorMap) WriteSymbolTable(sd disk.SectorDisk, st SymbolTable) error {
 		symtbl1[offset+4] = six[5]
 		copy(symtbl2[offset:offset+5], six)
 	}
-	if _, err := sm.WriteFile(sd, 3, symtbl1, true); err != nil {
+	if _, err := sm.WriteFile(diskbytes, 3, symtbl1, true); err != nil {
 		return fmt.Errorf("unable to write first half of symbol table: %v", err)
 	}
-	if _, err := sm.WriteFile(sd, 4, symtbl2, true); err != nil {
+	if _, err := sm.WriteFile(diskbytes, 4, symtbl2, true); err != nil {
 		return fmt.Errorf("unable to write first second of symbol table: %v", err)
 	}
 	return nil
@@ -643,9 +642,9 @@ func (st SymbolTable) FilesForCompoundName(filename string) (numFile byte, named
 // Operator is a disk.Operator - an interface for performing
 // high-level operations on files and directories.
 type Operator struct {
-	SD disk.SectorDisk
-	SM SectorMap
-	ST SymbolTable
+	data []byte
+	SM   SectorMap
+	ST   SymbolTable
 }
 
 var _ disk.Operator = Operator{}
@@ -657,11 +656,6 @@ const operatorName = "nakedos"
 // Name returns the name of the Operator.
 func (o Operator) Name() string {
 	return operatorName
-}
-
-// Order returns the sector or block order of the Operator.
-func (o Operator) Order() string {
-	return o.SD.Order()
 }
 
 // HasSubdirs returns true if the underlying operating system on the
@@ -698,7 +692,7 @@ func (o Operator) GetFile(filename string) (disk.FileInfo, error) {
 	if err != nil {
 		return disk.FileInfo{}, err
 	}
-	data, err := o.SM.ReadFile(o.SD, file)
+	data, err := o.SM.ReadFile(o.data, file)
 	if err != nil {
 		return disk.FileInfo{}, fmt.Errorf("error reading file DF%02x: %v", file, err)
 	}
@@ -731,13 +725,13 @@ func (o Operator) Delete(filename string) (bool, error) {
 	}
 	existed := len(o.SM.SectorsForFile(file)) > 0
 	o.SM.Delete(file)
-	if err := o.SM.Persist(o.SD); err != nil {
+	if err := o.SM.Persist(o.data); err != nil {
 		return existed, err
 	}
 	if o.ST != nil {
 		changed := o.ST.DeleteSymbol(filename)
 		if changed {
-			if err := o.SM.WriteSymbolTable(o.SD, o.ST); err != nil {
+			if err := o.SM.WriteSymbolTable(o.data, o.ST); err != nil {
 				return existed, err
 			}
 		}
@@ -774,7 +768,7 @@ func (o Operator) PutFile(fileInfo disk.FileInfo, overwrite bool) (existed bool,
 			return false, fmt.Errorf("all files already used")
 		}
 	}
-	existed, err = o.SM.WriteFile(o.SD, numFile, fileInfo.Data, overwrite)
+	existed, err = o.SM.WriteFile(o.data, numFile, fileInfo.Data, overwrite)
 	if err != nil {
 		return existed, err
 	}
@@ -782,22 +776,17 @@ func (o Operator) PutFile(fileInfo disk.FileInfo, overwrite bool) (existed bool,
 		if err := o.ST.AddSymbol(symbol, 0xDF00+uint16(numFile)); err != nil {
 			return existed, err
 		}
-		if err := o.SM.WriteSymbolTable(o.SD, o.ST); err != nil {
+		if err := o.SM.WriteSymbolTable(o.data, o.ST); err != nil {
 			return existed, err
 		}
 	}
 	return existed, nil
 }
 
-// Write writes the underlying disk to the given writer.
-func (o Operator) Write(w io.Writer) (int, error) {
-	return o.SD.Write(w)
-}
-
-// operatorFactory is the factory that returns supermon operators
+// OperatorFactory is the factory that returns supermon operators
 // given disk images.
-func operatorFactory(sd disk.SectorDisk) (disk.Operator, error) {
-	sm, err := LoadSectorMap(sd)
+func OperatorFactory(diskbytes []byte) (disk.Operator, error) {
+	sm, err := LoadSectorMap(diskbytes)
 	if err != nil {
 		return nil, err
 	}
@@ -805,16 +794,12 @@ func operatorFactory(sd disk.SectorDisk) (disk.Operator, error) {
 		return nil, err
 	}
 
-	op := Operator{SD: sd, SM: sm}
+	op := Operator{data: diskbytes, SM: sm}
 
-	st, err := sm.ReadSymbolTable(sd)
+	st, err := sm.ReadSymbolTable(diskbytes)
 	if err == nil {
 		op.ST = st
 	}
 
 	return op, nil
-}
-
-func init() {
-	disk.RegisterDiskOperatorFactory(operatorName, operatorFactory)
 }

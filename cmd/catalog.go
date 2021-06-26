@@ -6,54 +6,34 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/spf13/cobra"
-	"github.com/zellyn/diskii/lib/disk"
+	"github.com/zellyn/diskii/disk"
+	"github.com/zellyn/diskii/types"
 )
 
 var shortnames bool // flag for whether to print short filenames
 var debug bool
 
-// catalogCmd represents the cat command, used to catalog a disk or
-// directory.
-var catalogCmd = &cobra.Command{
-	Use:     "catalog",
-	Aliases: []string{"cat", "ls"},
-	Short:   "print a list of files",
-	Long:    `Catalog a disk or subdirectory.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		if err := runCat(args); err != nil {
-			fmt.Fprintln(os.Stderr, err.Error())
-			os.Exit(-1)
-		}
-	},
+type LsCmd struct {
+	ShortNames bool     `kong:"short='s',help='Whether to print short filenames (only makes a difference on Super-Mon disks).'"`
+	Image      *os.File `kong:"arg,required,help='Disk/device image to read.'"`
+	Directory  string   `kong:"arg,optional,help='Directory to list (ProDOS only).'"`
 }
 
-func init() {
-	RootCmd.AddCommand(catalogCmd)
-	catalogCmd.Flags().BoolVarP(&shortnames, "shortnames", "s", false, "whether to print short filenames (only makes a difference on Super-Mon disks)")
-	catalogCmd.Flags().BoolVarP(&debug, "debug", "d", false, "pring debug information")
-}
-
-// runCat performs the actual catalog logic.
-func runCat(args []string) error {
-	if len(args) < 1 || len(args) > 2 {
-		return fmt.Errorf("cat expects a disk image filename, and an optional subdirectory")
-	}
-	op, err := disk.Open(args[0])
+func (l *LsCmd) Run(globals *types.Globals) error {
+	op, order, err := disk.OpenImage(l.Image, globals)
 	if err != nil {
 		return err
 	}
-	if debug {
-		fmt.Printf("Got disk of type %q with underlying sector/block order %q.\n", op.Name(), op.Order())
+	if globals.Debug {
+		fmt.Fprintf(os.Stderr, "Opened disk with order %q, system %q\n", order, op.Name())
 	}
-	subdir := ""
-	if len(args) == 2 {
+
+	if l.Directory != "" {
 		if !op.HasSubdirs() {
 			return fmt.Errorf("Disks of type %q cannot have subdirectories", op.Name())
 		}
-		subdir = args[1]
 	}
-	fds, err := op.Catalog(subdir)
+	fds, err := op.Catalog(l.Directory)
 	if err != nil {
 		return err
 	}

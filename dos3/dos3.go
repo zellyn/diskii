@@ -7,10 +7,11 @@ package dos3
 import (
 	"encoding/binary"
 	"fmt"
-	"io"
+	"os"
 	"strings"
 
-	"github.com/zellyn/diskii/lib/disk"
+	"github.com/zellyn/diskii/disk"
+	"github.com/zellyn/diskii/types"
 )
 
 const (
@@ -356,11 +357,11 @@ func (fd *FileDesc) FilenameString() string {
 	return strings.TrimRight(string(slice), " ")
 }
 
-// descriptor returns a disk.Descriptor for a FileDesc, but with the
+// descriptor returns a types.Descriptor for a FileDesc, but with the
 // length set to -1, since we can't know it without reading the file
 // contents.
-func (fd FileDesc) descriptor() disk.Descriptor {
-	desc := disk.Descriptor{
+func (fd FileDesc) descriptor() types.Descriptor {
+	desc := types.Descriptor{
 		Name:    fd.FilenameString(),
 		Sectors: int(fd.SectorCount),
 		Length:  -1,
@@ -368,28 +369,28 @@ func (fd FileDesc) descriptor() disk.Descriptor {
 	}
 	switch fd.Filetype & 0x7f {
 	case FiletypeText: // Text file
-		desc.Type = disk.FiletypeASCIIText
+		desc.Type = types.FiletypeASCIIText
 	case FiletypeInteger: // INTEGER BASIC file
-		desc.Type = disk.FiletypeIntegerBASIC
+		desc.Type = types.FiletypeIntegerBASIC
 	case FiletypeApplesoft: // APPLESOFT BASIC file
-		desc.Type = disk.FiletypeApplesoftBASIC
+		desc.Type = types.FiletypeApplesoftBASIC
 	case FiletypeBinary: // BINARY file
-		desc.Type = disk.FiletypeBinary
+		desc.Type = types.FiletypeBinary
 	case FiletypeS: // S type file
-		desc.Type = disk.FiletypeS
+		desc.Type = types.FiletypeS
 	case FiletypeRelocatable: // RELOCATABLE object module file
-		desc.Type = disk.FiletypeRelocatable
+		desc.Type = types.FiletypeRelocatable
 	case FiletypeA: // A type file
-		desc.Type = disk.FiletypeNewA
+		desc.Type = types.FiletypeNewA
 	case FiletypeB: // B type file
-		desc.Type = disk.FiletypeNewB
+		desc.Type = types.FiletypeNewB
 	}
 	return desc
 }
 
 // Contents returns the on-disk contents of a file represented by a
 // FileDesc.
-func (fd *FileDesc) Contents(lsd disk.LogicalSectorDisk) ([]byte, error) {
+func (fd *FileDesc) Contents(diskbytes []byte) ([]byte, error) {
 	tsls := []TrackSectorList{}
 	nextTrack := fd.TrackSectorListTrack
 	nextSector := fd.TrackSectorListSector
@@ -401,7 +402,7 @@ func (fd *FileDesc) Contents(lsd disk.LogicalSectorDisk) ([]byte, error) {
 		}
 		seen[ts] = true
 		tsl := TrackSectorList{}
-		if err := disk.UnmarshalLogicalSector(lsd, &tsl, nextTrack, nextSector); err != nil {
+		if err := disk.UnmarshalLogicalSector(diskbytes, &tsl, nextTrack, nextSector); err != nil {
 			return nil, err
 		}
 		tsls = append(tsls, tsl)
@@ -426,7 +427,7 @@ func (fd *FileDesc) Contents(lsd disk.LogicalSectorDisk) ([]byte, error) {
 					data = append(data, 0)
 				}
 			} else {
-				contents, err := lsd.ReadLogicalSector(ts.Track, ts.Sector)
+				contents, err := disk.ReadSector(diskbytes, ts.Track, ts.Sector)
 				if err != nil {
 					return nil, err
 				}
@@ -490,14 +491,17 @@ func (tsl *TrackSectorList) FromSector(data []byte) error {
 
 // readCatalogSectors reads the raw CatalogSector structs from a DOS
 // 3.3 disk.
-func readCatalogSectors(d disk.LogicalSectorDisk) ([]CatalogSector, error) {
+func readCatalogSectors(diskbytes []byte, debug bool) ([]CatalogSector, error) {
 	v := &VTOC{}
-	err := disk.UnmarshalLogicalSector(d, v, VTOCTrack, VTOCSector)
+	err := disk.UnmarshalLogicalSector(diskbytes, v, VTOCTrack, VTOCSector)
 	if err != nil {
 		return nil, err
 	}
 	if err := v.Validate(); err != nil {
 		return nil, fmt.Errorf("Invalid VTOC sector: %v", err)
+	}
+	if debug {
+		fmt.Fprintf(os.Stderr, "Read VTOC sector: %#v\n", v)
 	}
 
 	nextTrack := v.CatalogTrack
@@ -516,7 +520,7 @@ func readCatalogSectors(d disk.LogicalSectorDisk) ([]CatalogSector, error) {
 			return nil, fmt.Errorf("catalog sectors can't be in sector %d: disk only has %d sectors", nextSector, v.NumSectors)
 		}
 		cs := CatalogSector{}
-		err := disk.UnmarshalLogicalSector(d, &cs, nextTrack, nextSector)
+		err := disk.UnmarshalLogicalSector(diskbytes, &cs, nextTrack, nextSector)
 		if err != nil {
 			return nil, err
 		}
@@ -528,8 +532,8 @@ func readCatalogSectors(d disk.LogicalSectorDisk) ([]CatalogSector, error) {
 }
 
 // ReadCatalog reads the catalog of a DOS 3.3 disk.
-func ReadCatalog(d disk.LogicalSectorDisk) (files, deleted []FileDesc, err error) {
-	css, err := readCatalogSectors(d)
+func ReadCatalog(diskbytes []byte, debug bool) (files, deleted []FileDesc, err error) {
+	css, err := readCatalogSectors(diskbytes, debug)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -549,13 +553,14 @@ func ReadCatalog(d disk.LogicalSectorDisk) (files, deleted []FileDesc, err error
 	return files, deleted, nil
 }
 
-// operator is a disk.Operator - an interface for performing
+// operator is a types.Operator - an interface for performing
 // high-level operations on files and directories.
 type operator struct {
-	lsd disk.LogicalSectorDisk
+	data  []byte
+	debug bool
 }
 
-var _ disk.Operator = operator{}
+var _ types.Operator = operator{}
 
 // operatorName is the keyword name for the operator that undestands
 // dos3 disks.
@@ -566,11 +571,6 @@ func (o operator) Name() string {
 	return operatorName
 }
 
-// Order returns the sector or block order of the underlying storage.
-func (o operator) Order() string {
-	return o.lsd.Order()
-}
-
 // HasSubdirs returns true if the underlying operating system on the
 // disk allows subdirectories.
 func (o operator) HasSubdirs() bool {
@@ -579,12 +579,12 @@ func (o operator) HasSubdirs() bool {
 
 // Catalog returns a catalog of disk entries. subdir should be empty
 // for operating systems that do not support subdirectories.
-func (o operator) Catalog(subdir string) ([]disk.Descriptor, error) {
-	fds, _, err := ReadCatalog(o.lsd)
+func (o operator) Catalog(subdir string) ([]types.Descriptor, error) {
+	fds, _, err := ReadCatalog(o.data, o.debug)
 	if err != nil {
 		return nil, err
 	}
-	descs := make([]disk.Descriptor, 0, len(fds))
+	descs := make([]types.Descriptor, 0, len(fds))
 	for _, fd := range fds {
 		descs = append(descs, fd.descriptor())
 	}
@@ -594,7 +594,7 @@ func (o operator) Catalog(subdir string) ([]disk.Descriptor, error) {
 // fileForFilename returns the FileDesc corresponding to the given
 // filename, or an error.
 func (o operator) fileForFilename(filename string) (FileDesc, error) {
-	fds, _, err := ReadCatalog(o.lsd)
+	fds, _, err := ReadCatalog(o.data, o.debug)
 	if err != nil {
 		return FileDesc{}, err
 	}
@@ -607,18 +607,18 @@ func (o operator) fileForFilename(filename string) (FileDesc, error) {
 }
 
 // GetFile retrieves a file by name.
-func (o operator) GetFile(filename string) (disk.FileInfo, error) {
+func (o operator) GetFile(filename string) (types.FileInfo, error) {
 	fd, err := o.fileForFilename(filename)
 	if err != nil {
-		return disk.FileInfo{}, err
+		return types.FileInfo{}, err
 	}
 	desc := fd.descriptor()
-	data, err := fd.Contents(o.lsd)
+	data, err := fd.Contents(o.data)
 	if err != nil {
-		return disk.FileInfo{}, err
+		return types.FileInfo{}, err
 	}
 
-	fi := disk.FileInfo{
+	fi := types.FileInfo{
 		Descriptor: desc,
 		Data:       data,
 	}
@@ -659,7 +659,7 @@ func (o operator) GetFile(filename string) (disk.FileInfo, error) {
 		errType = "B"
 	}
 
-	return disk.FileInfo{}, fmt.Errorf("%s does not yet implement `GetFile` for filetype %s", operatorName, errType)
+	return types.FileInfo{}, fmt.Errorf("%s does not yet implement `GetFile` for filetype %s", operatorName, errType)
 }
 
 // Delete deletes a file by name. It returns true if the file was
@@ -671,29 +671,31 @@ func (o operator) Delete(filename string) (bool, error) {
 // PutFile writes a file by name. If the file exists and overwrite
 // is false, it returns with an error. Otherwise it returns true if
 // an existing file was overwritten.
-func (o operator) PutFile(fileInfo disk.FileInfo, overwrite bool) (existed bool, err error) {
+func (o operator) PutFile(fileInfo types.FileInfo, overwrite bool) (existed bool, err error) {
 	return false, fmt.Errorf("%s does not implement PutFile yet", operatorName)
 }
 
-// Write writes the underlying disk to the given writer.
-func (o operator) Write(w io.Writer) (int, error) {
-	return o.lsd.Write(w)
+// OperatorFactory is a types.OperatorFactory for DOS 3.3 disks.
+type OperatorFactory struct {
 }
 
-// operatorFactory is the factory that returns dos3 operators given
-// disk images.
-func operatorFactory(sd disk.SectorDisk) (disk.Operator, error) {
-	lsd, err := disk.NewMappedDisk(sd, disk.Dos33LogicalToPhysicalSectorMap)
-	if err != nil {
-		return nil, err
-	}
-	_, _, err = ReadCatalog(lsd)
-	if err != nil {
-		return nil, fmt.Errorf("Cannot read catalog. Underlying error: %v", err)
-	}
-	return operator{lsd: lsd}, nil
+// Name returns the name of the operator.
+func (of OperatorFactory) Name() string {
+	return operatorName
 }
 
-func init() {
-	disk.RegisterDiskOperatorFactory(operatorName, operatorFactory)
+// SeemsToMatch returns true if the []byte disk image seems to match the
+// system of this operator.
+func (of OperatorFactory) SeemsToMatch(diskbytes []byte, debug bool) bool {
+	// For now, just return true if we can run Catalog successfully.
+	_, _, err := ReadCatalog(diskbytes, debug)
+	if err != nil {
+		return false
+	}
+	return true
+}
+
+// Operator returns an Operator for the []byte disk image.
+func (of OperatorFactory) Operator(diskbytes []byte, debug bool) (types.Operator, error) {
+	return operator{data: diskbytes, debug: debug}, nil
 }

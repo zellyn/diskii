@@ -7,9 +7,9 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/zellyn/diskii/lib/basic"
-	"github.com/zellyn/diskii/lib/basic/applesoft"
-	"github.com/zellyn/diskii/lib/helpers"
+	"github.com/zellyn/diskii/basic"
+	"github.com/zellyn/diskii/basic/applesoft"
+	"github.com/zellyn/diskii/helpers"
 )
 
 // applesoftCmd represents the applesoft command

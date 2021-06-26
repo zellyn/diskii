@@ -5,7 +5,7 @@ package applesoft
 import (
 	"testing"
 
-	"github.com/zellyn/diskii/lib/basic"
+	"github.com/zellyn/diskii/basic"
 )
 
 // helloBinary is a simple basic program used for testing. Listing

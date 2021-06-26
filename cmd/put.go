@@ -2,15 +2,7 @@
 
 package cmd
 
-import (
-	"fmt"
-	"os"
-
-	"github.com/spf13/cobra"
-	"github.com/zellyn/diskii/lib/disk"
-	"github.com/zellyn/diskii/lib/helpers"
-)
-
+/*
 var filetypeName string // flag for file type
 var overwrite bool      // flag for whether to overwrite
 
@@ -81,3 +73,4 @@ func runPut(args []string) error {
 	}
 	return nil
 }
+*/

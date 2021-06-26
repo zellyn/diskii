@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/zellyn/diskii/lib/disk"
+	"github.com/zellyn/diskii/types"
 )
 
 var all bool // flag for whether to show all filetypes
@@ -36,7 +36,7 @@ func runFiletypes(args []string) error {
 	if len(args) != 0 {
 		return fmt.Errorf("filetypes expects no arguments")
 	}
-	for _, typ := range disk.FiletypeNames(all) {
+	for _, typ := range types.FiletypeNames(all) {
 		fmt.Println(typ)
 	}
 	return nil

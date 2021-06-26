@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/zellyn/diskii/lib/disk"
+	"github.com/zellyn/diskii/disk"
 )
 
 // Storage types.
@@ -875,9 +875,9 @@ func deviceOperatorFactory(bd disk.BlockDevice) (disk.Operator, error) {
 	return op, nil
 }
 
-// diskOperatorFactory is the factory that returns dos3 operators
+// DiskOperatorFactory is the factory that returns dos3 operators
 // given disk images.
-func diskOperatorFactory(sd disk.SectorDisk) (disk.Operator, error) {
+func DiskOperatorFactory(sd disk.SectorDisk) (disk.Operator, error) {
 	bd, err := disk.BlockDeviceFromSectorDisk(sd)
 	if err != nil {
 		return nil, err
@@ -887,5 +887,5 @@ func diskOperatorFactory(sd disk.SectorDisk) (disk.Operator, error) {
 
 func init() {
 	disk.RegisterDeviceOperatorFactory(operatorName, deviceOperatorFactory)
-	disk.RegisterDiskOperatorFactory(operatorName, diskOperatorFactory)
+	disk.RegisterDiskOperatorFactory(operatorName, DiskOperatorFactory)
 }

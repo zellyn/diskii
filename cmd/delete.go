@@ -2,14 +2,7 @@
 
 package cmd
 
-import (
-	"fmt"
-	"os"
-
-	"github.com/spf13/cobra"
-	"github.com/zellyn/diskii/lib/disk"
-)
-
+/*
 var missingok bool // flag for whether to consider deleting a nonexistent file okay
 
 // deleteCmd represents the delete command, used to delete a file.
@@ -62,3 +55,4 @@ func runDelete(args []string) error {
 	}
 	return nil
 }
+*/

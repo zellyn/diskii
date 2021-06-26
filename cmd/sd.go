@@ -7,8 +7,8 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/zellyn/diskii/lib/disk"
-	"github.com/zellyn/diskii/lib/helpers"
+	"github.com/zellyn/diskii/disk"
+	"github.com/zellyn/diskii/helpers"
 )
 
 var sdAddress uint16 // flag for address to load at
@@ -87,16 +87,16 @@ func runMkSd(args []string) error {
 		contents = append(contents, 0)
 	}
 
-	sd := disk.Empty()
+	diskbytes := make([]byte, disk.FloppyDiskBytes)
 
 	var track, sector byte
 	for i := 0; i < len(contents); i += 256 {
 		sector += 2
-		if sector >= sd.Sectors() {
-			sector = (sd.Sectors() + 1) - sector
+		if sector >= disk.FloppySectors {
+			sector = (disk.FloppySectors + 1) - sector
 			if sector == 0 {
 				track++
-				if track >= sd.Tracks() {
+				if track >= disk.FloppyTracks {
 					return fmt.Errorf("ran out of tracks")
 				}
 			}
@@ -104,7 +104,7 @@ func runMkSd(args []string) error {
 
 		address := int(sdAddress) + i
 		loader = append(loader, byte(address>>8))
-		if err := sd.WritePhysicalSector(track, sector, contents[i:i+256]); err != nil {
+		if err := disk.WriteSector(diskbytes, track, sector, contents[i:i+256]); err != nil {
 			return err
 		}
 	}
@@ -114,7 +114,7 @@ func runMkSd(args []string) error {
 		loader = append(loader, 0)
 	}
 
-	if err := sd.WritePhysicalSector(0, 0, loader); err != nil {
+	if err := disk.WriteSector(diskbytes, 0, 0, loader); err != nil {
 		return err
 	}
 
@@ -122,7 +122,8 @@ func runMkSd(args []string) error {
 	if err != nil {
 		return err
 	}
-	_, err = sd.Write(f)
+	return fmt.Errorf("write not implemented")
+	//_, err = sd.Write(f)
 	if err != nil {
 		return err
 	}

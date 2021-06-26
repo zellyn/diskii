@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/kr/pretty"
-	"github.com/zellyn/diskii/lib/disk"
+	"github.com/zellyn/diskii/disk"
 )
 
 const testDisk = "testdata/chacha20.dsk"

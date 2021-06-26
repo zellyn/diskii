@@ -32,7 +32,7 @@ Discussion/support is in
 [#apple2 on the retrocomputing Slack](https://retrocomputing.slack.com/messages/apple2/)
 (invites [here](https://retrocomputing.herokuapp.com)).
 
-### Goals
+# Goals
 
 Eventually, it aims to be a comprehensive disk image manipulation
 tool, but for now only some parts work.
@@ -59,7 +59,7 @@ Current disk operations supported:
 | init             | ✗        | ✗      | ✗                  |
 | defrag           | ✗        | ✗      | ✗                  |
 
-### Installing/updating
+# Installing/updating
 Assuming you have Go installed, run `go get -u github.com/zellyn/diskii`
 
 You can also download automatically-built binaries from the
@@ -68,7 +68,7 @@ page](https://github.com/zellyn/diskii/releases/latest). If you
 need binaries for a different architecture, please send a pull
 request or open an issue.
 
-### Short-term TODOs/roadmap/easy ways to contribute
+# Short-term TODOs/roadmap/easy ways to contribute
 
 My rough TODO list (apart from anything marked (✗) in the disk
 operations matrix is listed below. Anything that an actual user needs
@@ -86,7 +86,7 @@ will be likely to get priority.
 - [ ] Add basic ProDOS structures
 - [ ] Add ProDOS support
 
-### Related tools
+# Related tools
 
 - http://a2ciderpress.com/ - the great grandaddy of them all. Windows only, unless you Wine
   - http://retrocomputingaustralia.com/rca-downloads/ Michael Mulhern's MacOS package of CiderPress
@@ -107,3 +107,52 @@ will be likely to get priority.
 - https://github.com/slotek/apple2-disk-util - ruby
 - https://github.com/slotek/dsk2nib - C
 - https://github.com/robmcmullen/atrcopy - dos3.3, python
+
+# Notes
+
+## Disk formats
+
+- `.do`
+- `.po`
+- `.dsk` - could be DO or PO.
+
+DOS 3.2.1: the 13 sectors are physically skewed on disk.
+
+DOS 3.3+: the 16 physical sectors are stored in ascending order on disk, not physically skewed at all. The 
+
+
+| Logical Sector  | DOS 3.3 Physical Sector | ProDOS Physical Sector |
+| --------------- | -------------- | ------------- |
+| 0 | 0 | x |
+| 1 | D | x | 
+| 2 | B | x | 
+| 3 | 9 | x | 
+| 4 | 7 | x | 
+| 5 | 5 | x | 
+| 6 | 3 | x | 
+| 7 | 1 | x | 
+| 8 | E | x | 
+| 9 | C | x | 
+| A | A | x | 
+| B | 8 | x | 
+| C | 6 | x | 
+| D | 4 | x | 
+| E | 2 | x | 
+| F | F | x | 
+
+### RWTS - DOS
+
+Sector mapping:
+http://www.textfiles.com/apple/ANATOMY/rwts.s.txt and search for INTRLEAV
+
+Mapping from specified sector to physical sector (the reverse of what the comment says):
+
+`00 0D 0B 09 07 05 03 01 0E 0C 0A 08 06 04 02 0F`
+
+So if you write to "T0S1" with DOS RWTS, it ends up in physical sector 0D.
+
+## Commandline examples for thinking about how it should work
+
+diskii ls dos33.dsk
+diskii --order=do ls dos33.dsk
+diskii --order=do --system=nakedos ls nakedos.dsk

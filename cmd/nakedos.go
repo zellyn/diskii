@@ -2,15 +2,7 @@
 
 package cmd
 
-import (
-	"fmt"
-	"os"
-
-	"github.com/spf13/cobra"
-	"github.com/zellyn/diskii/lib/disk"
-	"github.com/zellyn/diskii/lib/supermon"
-)
-
+/*
 // nakedosCmd represents the nakedos command
 var nakedosCmd = &cobra.Command{
 	Use:   "nakedos",
@@ -123,3 +115,4 @@ func runMkhello(args []string) error {
 	}
 	return nil
 }
+*/

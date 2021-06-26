@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/zellyn/diskii/data"
-	"github.com/zellyn/diskii/lib/woz"
+	"github.com/zellyn/diskii/woz"
 )
 
 func TestBasicLoad(t *testing.T) {
