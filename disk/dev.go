@@ -11,7 +11,7 @@ import (
 )
 
 // A ProDOS block.
-type Block [256]byte
+type Block [512]byte
 
 // Dev represents a .po disk image.
 type Dev struct {

@@ -7,9 +7,9 @@ package prodos
 import (
 	"encoding/binary"
 	"fmt"
-	"io"
 
 	"github.com/zellyn/diskii/disk"
+	"github.com/zellyn/diskii/types"
 )
 
 // Storage types.
@@ -104,11 +104,11 @@ func (vbm VolumeBitMap) IsFree(block uint16) bool {
 
 // readVolumeBitMap reads the entire volume bitmap from a block
 // device.
-func readVolumeBitMap(bd disk.BlockDevice, startBlock uint16) (VolumeBitMap, error) {
-	blocks := bd.Blocks() / 4096
+func readVolumeBitMap(devicebytes []byte, startBlock uint16) (VolumeBitMap, error) {
+	blocks := uint16(len(devicebytes) / 512 / 4096)
 	vbm := NewVolumeBitMap(startBlock, blocks)
 	for i := 0; i < len(vbm); i++ {
-		if err := disk.UnmarshalBlock(bd, &vbm[i], vbm[i].GetBlock()); err != nil {
+		if err := disk.UnmarshalBlock(devicebytes, &vbm[i], vbm[i].GetBlock()); err != nil {
 			return nil, fmt.Errorf("cannot read block %d (device block %d) of Volume Bit Map: %v", i, vbm[i].GetBlock(), err)
 		}
 	}
@@ -116,9 +116,9 @@ func readVolumeBitMap(bd disk.BlockDevice, startBlock uint16) (VolumeBitMap, err
 }
 
 // Write writes the Volume Bit Map to a block device.
-func (vbm VolumeBitMap) Write(bd disk.BlockDevice) error {
+func (vbm VolumeBitMap) Write(devicebytes []byte) error {
 	for i, bp := range vbm {
-		if err := disk.MarshalBlock(bd, bp); err != nil {
+		if err := disk.MarshalBlock(devicebytes, bp); err != nil {
 			return fmt.Errorf("cannot write block %d (device block %d) of Volume Bit Map: %v", i, bp.GetBlock(), err)
 		}
 	}
@@ -351,14 +351,14 @@ type FileDescriptor struct {
 	HeaderPointer uint16 // Block  number of the key block for the directory which describes this file.
 }
 
-// descriptor returns a disk.Descriptor for a FileDescriptor.
-func (fd FileDescriptor) descriptor() disk.Descriptor {
-	desc := disk.Descriptor{
+// descriptor returns a types.Descriptor for a FileDescriptor.
+func (fd FileDescriptor) descriptor() types.Descriptor {
+	desc := types.Descriptor{
 		Name:   fd.Name(),
 		Blocks: int(fd.BlocksUsed),
 		Length: int(fd.Eof[0]) + int(fd.Eof[1])<<8 + int(fd.Eof[2])<<16,
-		Locked: false, // TODO(zellyn): use prodos-style access in disk.Descriptor
-		Type:   disk.Filetype(fd.FileType),
+		Locked: false, // TODO(zellyn): use prodos-style access in types.Descriptor
+		Type:   types.Filetype(fd.FileType),
 	}
 	return desc
 }
@@ -652,18 +652,18 @@ func (v Volume) subdirDescriptors() []FileDescriptor {
 
 // readVolume reads the entire volume and subdirectories from a device
 // into memory.
-func readVolume(bd disk.BlockDevice, keyBlock uint16) (Volume, error) {
+func readVolume(devicebytes []byte, keyBlock uint16) (Volume, error) {
 	v := Volume{
 		keyBlock:       &VolumeDirectoryKeyBlock{},
 		subdirsByBlock: make(map[uint16]*Subdirectory),
 		subdirsByName:  make(map[string]*Subdirectory),
 	}
 
-	if err := disk.UnmarshalBlock(bd, v.keyBlock, keyBlock); err != nil {
+	if err := disk.UnmarshalBlock(devicebytes, v.keyBlock, keyBlock); err != nil {
 		return v, fmt.Errorf("cannot read first block of volume directory (block %d): %v", keyBlock, err)
 	}
 
-	if vbm, err := readVolumeBitMap(bd, v.keyBlock.Header.BitMapPointer); err != nil {
+	if vbm, err := readVolumeBitMap(devicebytes, v.keyBlock.Header.BitMapPointer); err != nil {
 		return v, err
 	} else {
 		v.bitmap = &vbm
@@ -671,7 +671,7 @@ func readVolume(bd disk.BlockDevice, keyBlock uint16) (Volume, error) {
 
 	for block := v.keyBlock.Next; block != 0; block = v.blocks[len(v.blocks)-1].Next {
 		vdb := VolumeDirectoryBlock{}
-		if err := disk.UnmarshalBlock(bd, &vdb, block); err != nil {
+		if err := disk.UnmarshalBlock(devicebytes, &vdb, block); err != nil {
 			return v, err
 		}
 		v.blocks = append(v.blocks, &vdb)
@@ -681,7 +681,7 @@ func readVolume(bd disk.BlockDevice, keyBlock uint16) (Volume, error) {
 
 	for i := 0; i < len(sdds); i++ {
 		sdd := sdds[i]
-		sub, err := readSubdirectory(bd, sdd)
+		sub, err := readSubdirectory(devicebytes, sdd)
 		if err != nil {
 			return v, err
 		}
@@ -751,18 +751,18 @@ func parentDirName(parentDirectoryBlock uint16, keyBlock uint16, subdirMap map[u
 
 // readSubdirectory reads a single subdirectory from a device into
 // memory.
-func readSubdirectory(bd disk.BlockDevice, fd FileDescriptor) (Subdirectory, error) {
+func readSubdirectory(devicebytes []byte, fd FileDescriptor) (Subdirectory, error) {
 	s := Subdirectory{
 		keyBlock: &SubdirectoryKeyBlock{},
 	}
 
-	if err := disk.UnmarshalBlock(bd, s.keyBlock, fd.KeyPointer); err != nil {
+	if err := disk.UnmarshalBlock(devicebytes, s.keyBlock, fd.KeyPointer); err != nil {
 		return s, fmt.Errorf("cannot read first block of subdirectory %q (block %d): %v", fd.Name(), fd.KeyPointer, err)
 	}
 
 	for block := s.keyBlock.Next; block != 0; block = s.blocks[len(s.blocks)-1].Next {
 		sdb := SubdirectoryBlock{}
-		if err := disk.UnmarshalBlock(bd, &sdb, block); err != nil {
+		if err := disk.UnmarshalBlock(devicebytes, &sdb, block); err != nil {
 			return s, err
 		}
 		s.blocks = append(s.blocks, &sdb)
@@ -783,10 +783,11 @@ func copyBytes(dst, src []byte) int {
 // operator is a disk.Operator - an interface for performing
 // high-level operations on files and directories.
 type operator struct {
-	dev disk.BlockDevice
+	data  []byte
+	debug bool
 }
 
-var _ disk.Operator = operator{}
+var _ types.Operator = operator{}
 
 // operatorName is the keyword name for the operator that undestands
 // prodos disks/devices.
@@ -797,11 +798,6 @@ func (o operator) Name() string {
 	return operatorName
 }
 
-// Order returns the sector or block order of the underlying storage.
-func (o operator) Order() string {
-	return o.dev.Order()
-}
-
 // HasSubdirs returns true if the underlying operating system on the
 // disk allows subdirectories.
 func (o operator) HasSubdirs() bool {
@@ -810,14 +806,14 @@ func (o operator) HasSubdirs() bool {
 
 // Catalog returns a catalog of disk entries. subdir should be empty
 // for operating systems that do not support subdirectories.
-func (o operator) Catalog(subdir string) ([]disk.Descriptor, error) {
+func (o operator) Catalog(subdir string) ([]types.Descriptor, error) {
 
-	vol, err := readVolume(o.dev, 2)
+	vol, err := readVolume(o.data, 2)
 	if err != nil {
 		return nil, err
 	}
 
-	var result []disk.Descriptor
+	var result []types.Descriptor
 
 	if subdir == "" {
 		for _, desc := range vol.descriptors() {
@@ -842,8 +838,8 @@ func (o operator) Catalog(subdir string) ([]disk.Descriptor, error) {
 }
 
 // GetFile retrieves a file by name.
-func (o operator) GetFile(filename string) (disk.FileInfo, error) {
-	return disk.FileInfo{}, fmt.Errorf("%s doesn't implement GetFile yet", operatorName)
+func (o operator) GetFile(filename string) (types.FileInfo, error) {
+	return types.FileInfo{}, fmt.Errorf("%s doesn't implement GetFile yet", operatorName)
 }
 
 // Delete deletes a file by name. It returns true if the file was
@@ -855,37 +851,49 @@ func (o operator) Delete(filename string) (bool, error) {
 // PutFile writes a file by name. If the file exists and overwrite
 // is false, it returns with an error. Otherwise it returns true if
 // an existing file was overwritten.
-func (o operator) PutFile(fileInfo disk.FileInfo, overwrite bool) (existed bool, err error) {
+func (o operator) PutFile(fileInfo types.FileInfo, overwrite bool) (existed bool, err error) {
 	return false, fmt.Errorf("%s doesn't implement PutFile yet", operatorName)
 }
 
-// Write writes the underlying device blocks to the given writer.
-func (o operator) Write(w io.Writer) (int, error) {
-	return o.dev.Write(w)
+// OperatorFactory is a types.OperatorFactory for ProDos disks.
+type OperatorFactory struct {
 }
 
-// deviceOperatorFactory is the factory that returns prodos operators
-// given device images.
-func deviceOperatorFactory(bd disk.BlockDevice) (disk.Operator, error) {
-	op := operator{dev: bd}
-	_, err := op.Catalog("")
-	if err != nil {
-		return nil, fmt.Errorf("Cannot read catalog. Underlying error: %v", err)
+// Name returns the name of the operator.
+func (of OperatorFactory) Name() string {
+	return operatorName
+}
+
+// SeemsToMatch returns true if the []byte disk image seems to match the
+// system of this operator.
+func (of OperatorFactory) SeemsToMatch(devicebytes []byte, debug bool) bool {
+	// For now, just return true if we can run Catalog successfully.
+	if len(devicebytes) == disk.FloppyDiskBytes {
+		swizzled, err := of.swizzle(devicebytes)
+		if err != nil {
+			return false
+		}
+		devicebytes = swizzled
 	}
-	return op, nil
-}
-
-// DiskOperatorFactory is the factory that returns dos3 operators
-// given disk images.
-func DiskOperatorFactory(sd disk.SectorDisk) (disk.Operator, error) {
-	bd, err := disk.BlockDeviceFromSectorDisk(sd)
+	_, err := readVolume(devicebytes, 2)
 	if err != nil {
-		return nil, err
+		return false
 	}
-	return deviceOperatorFactory(bd)
+	return true
 }
 
-func init() {
-	disk.RegisterDeviceOperatorFactory(operatorName, deviceOperatorFactory)
-	disk.RegisterDiskOperatorFactory(operatorName, DiskOperatorFactory)
+// Operator returns an Operator for the []byte disk image.
+func (of OperatorFactory) Operator(devicebytes []byte, debug bool) (types.Operator, error) {
+	if len(devicebytes) == disk.FloppyDiskBytes {
+		swizzled, err := of.swizzle(devicebytes)
+		if err != nil {
+			return nil, err
+		}
+		devicebytes = swizzled
+	}
+	return operator{data: devicebytes, debug: debug}, nil
+}
+
+func (of OperatorFactory) swizzle(rawbytes []byte) ([]byte, error) {
+	return disk.Swizzle(rawbytes, disk.ProDosPhysicalToLogicalSectorMap)
 }

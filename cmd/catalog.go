@@ -10,19 +10,19 @@ import (
 	"github.com/zellyn/diskii/types"
 )
 
-var shortnames bool // flag for whether to print short filenames
-var debug bool
-
 type LsCmd struct {
+	Order  string `kong:"default='auto',enum='auto,do,po',help='Logical-to-physical sector order.'"`
+	System string `kong:"default='auto',enum='auto,dos3',help='DOS system used for image.'"`
+
 	ShortNames bool     `kong:"short='s',help='Whether to print short filenames (only makes a difference on Super-Mon disks).'"`
 	Image      *os.File `kong:"arg,required,help='Disk/device image to read.'"`
 	Directory  string   `kong:"arg,optional,help='Directory to list (ProDOS only).'"`
 }
 
 func (l *LsCmd) Run(globals *types.Globals) error {
-	op, order, err := disk.OpenImage(l.Image, globals)
+	op, order, err := disk.OpenImage(l.Image, l.Order, l.System, globals)
 	if err != nil {
-		return err
+		return fmt.Errorf("%w: %s", err, l.Image.Name())
 	}
 	if globals.Debug {
 		fmt.Fprintf(os.Stderr, "Opened disk with order %q, system %q\n", order, op.Name())
@@ -38,7 +38,7 @@ func (l *LsCmd) Run(globals *types.Globals) error {
 		return err
 	}
 	for _, fd := range fds {
-		if !shortnames && fd.Fullname != "" {
+		if !l.ShortNames && fd.Fullname != "" {
 			fmt.Println(fd.Fullname)
 		} else {
 			fmt.Println(fd.Name)

@@ -3,12 +3,14 @@
 package supermon
 
 import (
+	"os"
 	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/kr/pretty"
 	"github.com/zellyn/diskii/disk"
+	"github.com/zellyn/diskii/types"
 )
 
 const testDisk = "testdata/chacha20.dsk"
@@ -27,16 +29,36 @@ No more; and by a sleep, to say we end
 
 // loadSectorMap loads a sector map for the disk image contained in
 // filename. It returns the sector map and a sector disk.
-func loadSectorMap(filename string) (SectorMap, disk.SectorDisk, error) {
-	sd, err := disk.LoadDSK(filename)
+func loadSectorMap(filename string) (SectorMap, []byte, error) {
+	rawbytes, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, nil, err
 	}
-	sm, err := LoadSectorMap(sd)
+	diskbytes, err := disk.Swizzle(rawbytes, disk.Dos33LogicalToPhysicalSectorMap)
 	if err != nil {
 		return nil, nil, err
 	}
-	return sm, sd, nil
+	sm, err := LoadSectorMap(diskbytes)
+	if err != nil {
+		return nil, nil, err
+	}
+	return sm, diskbytes, nil
+}
+
+// getOperator gets a types.Operator for the given NakedOS disk, assumed to be
+// in "do" order.
+func getOperator(filename string) (types.Operator, error) {
+	f, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	op, _, err := disk.OpenImage(f, "do", "nakedos", &types.Globals{
+		DiskOperatorFactories: []types.OperatorFactory{OperatorFactory{}},
+	})
+	if err != nil {
+		return nil, err
+	}
+	return op, nil
 }
 
 // TestReadSectorMap tests the reading of the sector map of a test
@@ -126,11 +148,7 @@ func TestReadSymbolTable(t *testing.T) {
 // TestGetFile tests the retrieval of a file's contents, using the
 // Operator interface.
 func TestGetFile(t *testing.T) {
-	sd, err := disk.OpenDisk(testDisk)
-	if err != nil {
-		t.Fatal(err)
-	}
-	op, err := disk.OperatorForDisk(sd)
+	op, err := getOperator(testDisk)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -213,20 +231,16 @@ func TestReadWriteSymbolTable(t *testing.T) {
 // TestPutFile tests the creation of a file, using the Operator
 // interface.
 func TestPutFile(t *testing.T) {
-	sd, err := disk.OpenDisk(testDisk)
-	if err != nil {
-		t.Fatal(err)
-	}
-	op, err := disk.OperatorForDisk(sd)
+	op, err := getOperator(testDisk)
 	if err != nil {
 		t.Fatal(err)
 	}
 	contents := []byte(cities)
-	fileInfo := disk.FileInfo{
-		Descriptor: disk.Descriptor{
+	fileInfo := types.FileInfo{
+		Descriptor: types.Descriptor{
 			Name:   "FNEWFILE",
 			Length: len(contents),
-			Type:   disk.FiletypeBinary,
+			Type:   types.FiletypeBinary,
 		},
 		Data: contents,
 	}

@@ -10,36 +10,30 @@ import (
 	"github.com/zellyn/diskii/types"
 )
 
-var diskOrdersByName map[string][]int = map[string][]int{
-	"do":  Dos33LogicalToPhysicalSectorMap,
-	"po":  ProDOSLogicalToPhysicalSectorMap,
-	"raw": {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF},
-}
-
 // OpenImage attempts to open an image on disk, using the provided ordering and system type.
-func OpenImage(file *os.File, globals *types.Globals) (types.Operator, string, error) {
+func OpenImage(file *os.File, order string, system string, globals *types.Globals) (types.Operator, string, error) {
 	bb, err := io.ReadAll(file)
 	if err != nil {
 		return nil, "", err
 	}
 	if len(bb) == FloppyDiskBytes {
-		return openDoOrPo(bb, globals, strings.ToLower(path.Ext(file.Name())))
+		return openDoOrPo(bb, order, system, globals, strings.ToLower(path.Ext(file.Name())))
 	}
 	return nil, "", fmt.Errorf("OpenImage not implemented yet for non-disk-sized images")
 }
 
-func openDoOrPo(diskbytes []byte, globals *types.Globals, ext string) (types.Operator, string, error) {
+func openDoOrPo(diskbytes []byte, order string, system string, globals *types.Globals, ext string) (types.Operator, string, error) {
 	var factories []types.OperatorFactory
 	for _, factory := range globals.DiskOperatorFactories {
-		if globals.System == "auto" || globals.System == factory.Name() {
+		if system == "auto" || system == factory.Name() {
 			factories = append(factories, factory)
 		}
 	}
 	if len(factories) == 0 {
-		return nil, "", fmt.Errorf("cannot find disk system with name %q", globals.System)
+		return nil, "", fmt.Errorf("cannot find disk system with name %q", system)
 	}
-	orders := []string{globals.Order}
-	switch globals.Order {
+	orders := []string{order}
+	switch order {
 	case "do", "po":
 		// nothing more
 	case "auto":
@@ -54,16 +48,16 @@ func openDoOrPo(diskbytes []byte, globals *types.Globals, ext string) (types.Ope
 			return nil, "", fmt.Errorf("unknown disk image extension: %q", ext)
 		}
 	default:
-		return nil, "", fmt.Errorf("disk order %q invalid for %d-byte disk images", globals.Order, FloppyDiskBytes)
+		return nil, "", fmt.Errorf("disk order %q invalid for %d-byte disk images", order, FloppyDiskBytes)
 	}
 
 	for _, order := range orders {
-		swizzled, err := Swizzle(diskbytes, diskOrdersByName[order])
+		swizzled, err := Swizzle(diskbytes, LogicalToPhysicalByName[order])
 		if err != nil {
 			return nil, "", err
 		}
 		for _, factory := range factories {
-			if len(orders) == 1 && globals.System != "auto" {
+			if len(orders) == 1 && system != "auto" {
 				if globals.Debug {
 					fmt.Fprintf(os.Stderr, "Attempting to open with order=%s, system=%s.\n", order, factory.Name())
 				}
@@ -88,14 +82,14 @@ func openDoOrPo(diskbytes []byte, globals *types.Globals, ext string) (types.Ope
 			}
 		}
 	}
-	return nil, "", fmt.Errorf("openDoOrPo not implemented yet")
+	return nil, "", fmt.Errorf("unabled to open disk image")
 }
 
 // Swizzle changes the sector ordering according to the order parameter. If
 // order is nil, it leaves the order unchanged.
 func Swizzle(diskimage []byte, order []int) ([]byte, error) {
 	if len(diskimage) != FloppyDiskBytes {
-		return nil, fmt.Errorf("swizzling only works on disk images of %d bytes; got %d", FloppyDiskBytes, len(diskimage))
+		return nil, fmt.Errorf("reordering only works on disk images of %d bytes; got %d", FloppyDiskBytes, len(diskimage))
 	}
 	if err := validateOrder(order); err != nil {
 		return nil, fmt.Errorf("called Swizzle with weird order: %w", err)

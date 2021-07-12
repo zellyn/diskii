@@ -47,8 +47,8 @@ Current disk operations supported:
 | ---------------- | -------- | ------ | ------------------ |
 | basic structures | ✓        | ✓      | ✓                  |
 | ls               | ✓        | ✓      | ✓                  |
-| dump             | ✓        | ✗      | ✓                  |
-| put              | ✗        | ✗      | ✓                  |
+| dump             | ✗        | ✗      | ✗                  |
+| put              | ✗        | ✗      | ✗                  |
 | dumptext         | ✗        | ✗      | ✗                  |
 | delete           | ✗        | ✗      | ✗                  |
 | rename           | ✗        | ✗      | ✗                  |
@@ -78,12 +78,9 @@ will be likely to get priority.
 - [x] Implement `GetFile` for DOS 3.3
 - [ ] Add and implement the `-l` flag for `ls`
 - [x] Add `Delete` to the `disk.Operator` interface
-  - [x] Implement it for Super-Mon
+  - [ ] Implement it for Super-Mon
   - [ ] Implement it for DOS 3.3
-- [ ] Make 13-sector DOS disks work
-- [ ] Read/write nybble formats
-- [ ] Read/write gzipped files
-- [ ] Add basic ProDOS structures
+- [x] Add basic ProDOS structures
 - [ ] Add ProDOS support
 
 # Related tools
@@ -114,38 +111,34 @@ will be likely to get priority.
 
 - `.do`
 - `.po`
-- `.dsk` - could be DO or PO.
+- `.dsk` - could be DO or PO. When in doubt, assume DO.
 
-DOS 3.2.1: the 13 sectors are physically skewed on disk.
+| Physical Sectors | DOS 3.2 Logical | DOS 3.3 Logical | ProDOS/Pascal Logical | CP/M Logical |
+|------------------|-----------------|-----------------|-----------------------|------------- |
+|        0         |        0        |        0        |          0.0          |      0.0     |
+|        1         |        1        |        7        |          4.0          |      2.3     |
+|        2         |        2        |        E        |          0.1          |      1.2     |
+|        3         |        3        |        6        |          4.1          |      0.1     |
+|        4         |        4        |        D        |          1.0          |      3.0     |
+|        5         |        5        |        5        |          5.0          |      1.3     |
+|        6         |        6        |        C        |          1.1          |      0.2     |
+|        7         |        7        |        4        |          5.1          |      3.1     |
+|        8         |        8        |        B        |          2.0          |      2.0     |
+|        9         |        9        |        3        |          6.0          |      0.3     |
+|        A         |        A        |        A        |          2.1          |      3.2     |
+|        B         |        B        |        2        |          6.1          |      2.1     |
+|        C         |        C        |        9        |          3.0          |      1.0     |
+|        D         |                 |        1        |          7.0          |      3.3     |
+|        E         |                 |        8        |          3.1          |      2.2     |
+|        F         |                 |        F        |          7.1          |      1.1     |
 
-DOS 3.3+: the 16 physical sectors are stored in ascending order on disk, not physically skewed at all. The 
-
-
-| Logical Sector  | DOS 3.3 Physical Sector | ProDOS Physical Sector |
-| --------------- | -------------- | ------------- |
-| 0 | 0 | x |
-| 1 | D | x | 
-| 2 | B | x | 
-| 3 | 9 | x | 
-| 4 | 7 | x | 
-| 5 | 5 | x | 
-| 6 | 3 | x | 
-| 7 | 1 | x | 
-| 8 | E | x | 
-| 9 | C | x | 
-| A | A | x | 
-| B | 8 | x | 
-| C | 6 | x | 
-| D | 4 | x | 
-| E | 2 | x | 
-| F | F | x | 
-
+_Note: DOS 3.2 rearranged the physical sectors on disk to achieve interleaving._
 ### RWTS - DOS
 
 Sector mapping:
 http://www.textfiles.com/apple/ANATOMY/rwts.s.txt and search for INTRLEAV
 
-Mapping from specified sector to physical sector (the reverse of what the comment says):
+Mapping from specified sector to physical sector:
 
 `00 0D 0B 09 07 05 03 01 0E 0C 0A 08 06 04 02 0F`
 

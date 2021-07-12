@@ -12,6 +12,7 @@ import (
 
 	"github.com/zellyn/diskii/disk"
 	"github.com/zellyn/diskii/errors"
+	"github.com/zellyn/diskii/types"
 )
 
 const (
@@ -253,14 +254,14 @@ func decodeSymbol(five []byte, extra byte) string {
 	value := uint64(five[0]) + uint64(five[1])<<8 + uint64(five[2])<<16 + uint64(five[3])<<24 + uint64(five[4])<<32 + uint64(extra)<<40
 	for value&0x1f > 0 {
 		if value&0x1f < 27 {
-			result = result + string(value&0x1f+'@')
+			result = result + string(rune(value&0x1f+'@'))
 			value >>= 5
 			continue
 		}
 		if value&0x20 == 0 {
-			result = result + string((value&0x1f)-0x1b+'0')
+			result = result + string(rune((value&0x1f)-0x1b+'0'))
 		} else {
-			result = result + string((value&0x1f)-0x1b+'5')
+			result = result + string(rune((value&0x1f)-0x1b+'5'))
 		}
 		value >>= 6
 	}
@@ -639,74 +640,75 @@ func (st SymbolTable) FilesForCompoundName(filename string) (numFile byte, named
 	return numFile, namedFile, parts[1], nil
 }
 
-// Operator is a disk.Operator - an interface for performing
+// operator is a disk.Operator - an interface for performing
 // high-level operations on files and directories.
-type Operator struct {
-	data []byte
-	SM   SectorMap
-	ST   SymbolTable
+type operator struct {
+	data  []byte
+	SM    SectorMap
+	ST    SymbolTable
+	debug bool
 }
 
-var _ disk.Operator = Operator{}
+var _ types.Operator = operator{}
 
 // operatorName is the keyword name for the operator that undestands
 // NakedOS/Super-Mon disks.
 const operatorName = "nakedos"
 
 // Name returns the name of the Operator.
-func (o Operator) Name() string {
+func (o operator) Name() string {
 	return operatorName
 }
 
 // HasSubdirs returns true if the underlying operating system on the
 // disk allows subdirectories.
-func (o Operator) HasSubdirs() bool {
+func (o operator) HasSubdirs() bool {
 	return false
 }
 
 // Catalog returns a catalog of disk entries. subdir should be empty
 // for operating systems that do not support subdirectories.
-func (o Operator) Catalog(subdir string) ([]disk.Descriptor, error) {
-	var descs []disk.Descriptor
+func (o operator) Catalog(subdir string) ([]types.Descriptor, error) {
+	var descs []types.Descriptor
 	sectorsByFile := o.SM.SectorsByFile()
 	for file := byte(1); file < FileReserved; file++ {
 		l := len(sectorsByFile[file])
 		if l == 0 {
 			continue
 		}
-		descs = append(descs, disk.Descriptor{
+		descs = append(descs, types.Descriptor{
 			Name:     NameForFile(file, o.ST),
 			Fullname: FullnameForFile(file, o.ST),
 			Sectors:  l,
 			Length:   l * 256,
 			Locked:   false,
-			Type:     disk.FiletypeBinary,
+			Type:     types.FiletypeBinary,
 		})
 	}
 	return descs, nil
 }
 
 // GetFile retrieves a file by name.
-func (o Operator) GetFile(filename string) (disk.FileInfo, error) {
+func (o operator) GetFile(filename string) (types.FileInfo, error) {
 	file, err := o.ST.FileForName(filename)
 	if err != nil {
-		return disk.FileInfo{}, err
+		return types.FileInfo{}, err
 	}
 	data, err := o.SM.ReadFile(o.data, file)
 	if err != nil {
-		return disk.FileInfo{}, fmt.Errorf("error reading file DF%02x: %v", file, err)
+		return types.FileInfo{}, fmt.Errorf("error reading file DF%02x: %v", file, err)
 	}
 	if len(data) == 0 {
-		return disk.FileInfo{}, fmt.Errorf("file DF%02x not fount", file)
+		return types.FileInfo{}, fmt.Errorf("file DF%02x not fount", file)
 	}
-	desc := disk.Descriptor{
+	desc := types.Descriptor{
 		Name:    NameForFile(file, o.ST),
 		Sectors: len(data) / 256,
 		Length:  len(data),
 		Locked:  false,
-		Type:    disk.FiletypeBinary,
+		Type:    types.FiletypeBinary,
 	}
-	fi := disk.FileInfo{
+	fi := types.FileInfo{
 		Descriptor: desc,
 		Data:       data,
 	}
@@ -718,7 +720,7 @@ func (o Operator) GetFile(filename string) (disk.FileInfo, error) {
 
 // Delete deletes a file by name. It returns true if the file was
 // deleted, false if it didn't exist.
-func (o Operator) Delete(filename string) (bool, error) {
+func (o operator) Delete(filename string) (bool, error) {
 	file, err := o.ST.FileForName(filename)
 	if err != nil {
 		return false, err
@@ -742,8 +744,8 @@ func (o Operator) Delete(filename string) (bool, error) {
 // PutFile writes a file by name. If the file exists and overwrite
 // is false, it returns with an error. Otherwise it returns true if
 // an existing file was overwritten.
-func (o Operator) PutFile(fileInfo disk.FileInfo, overwrite bool) (existed bool, err error) {
-	if fileInfo.Descriptor.Type != disk.FiletypeBinary {
+func (o operator) PutFile(fileInfo types.FileInfo, overwrite bool) (existed bool, err error) {
+	if fileInfo.Descriptor.Type != types.FiletypeBinary {
 		return false, fmt.Errorf("%s: only binary file type supported", operatorName)
 	}
 	if fileInfo.Descriptor.Length != len(fileInfo.Data) {
@@ -783,9 +785,9 @@ func (o Operator) PutFile(fileInfo disk.FileInfo, overwrite bool) (existed bool,
 	return existed, nil
 }
 
-// OperatorFactory is the factory that returns supermon operators
+// XOperatorFactory is the factory that returns supermon operators
 // given disk images.
-func OperatorFactory(diskbytes []byte) (disk.Operator, error) {
+func XOperatorFactory(diskbytes []byte) (types.Operator, error) {
 	sm, err := LoadSectorMap(diskbytes)
 	if err != nil {
 		return nil, err
@@ -794,7 +796,50 @@ func OperatorFactory(diskbytes []byte) (disk.Operator, error) {
 		return nil, err
 	}
 
-	op := Operator{data: diskbytes, SM: sm}
+	op := operator{data: diskbytes, SM: sm}
+
+	st, err := sm.ReadSymbolTable(diskbytes)
+	if err == nil {
+		op.ST = st
+	}
+
+	return op, nil
+}
+
+// OperatorFactory is a types.OperatorFactory for DOS 3.3 disks.
+type OperatorFactory struct {
+}
+
+// Name returns the name of the operator.
+func (of OperatorFactory) Name() string {
+	return operatorName
+}
+
+// SeemsToMatch returns true if the []byte disk image seems to match the
+// system of this operator.
+func (of OperatorFactory) SeemsToMatch(diskbytes []byte, debug bool) bool {
+	// For now, just return true if we can run Catalog successfully.
+	sm, err := LoadSectorMap(diskbytes)
+	if err != nil {
+		return false
+	}
+	if err := sm.Verify(); err != nil {
+		return false
+	}
+	return true
+}
+
+// Operator returns an Operator for the []byte disk image.
+func (of OperatorFactory) Operator(diskbytes []byte, debug bool) (types.Operator, error) {
+	sm, err := LoadSectorMap(diskbytes)
+	if err != nil {
+		return nil, err
+	}
+	if err := sm.Verify(); err != nil {
+		return nil, err
+	}
+
+	op := operator{data: diskbytes, SM: sm, debug: debug}
 
 	st, err := sm.ReadSymbolTable(diskbytes)
 	if err == nil {

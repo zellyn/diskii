@@ -41,6 +41,20 @@ var ProDosPhysicalToLogicalSectorMap = []int{
 	0x04, 0x0C, 0x05, 0x0D, 0x06, 0x0E, 0x07, 0x0F,
 }
 
+// LogicalToPhysicalByName maps from "do" and "po" to the corresponding
+// logical-to-physical ordering.
+var LogicalToPhysicalByName map[string][]int = map[string][]int{
+	"do": Dos33LogicalToPhysicalSectorMap,
+	"po": ProDOSLogicalToPhysicalSectorMap,
+}
+
+// PhysicalToLogicalByName maps from "do" and "po" to the corresponding
+// physical-to-logical ordering.
+var PhysicalToLogicalByName map[string][]int = map[string][]int{
+	"do": Dos33PhysicalToLogicalSectorMap,
+	"po": ProDosPhysicalToLogicalSectorMap,
+}
+
 // TrackSector is a pair of track/sector bytes.
 type TrackSector struct {
 	Track  byte

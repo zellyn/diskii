@@ -5,7 +5,10 @@
 package helpers
 
 import (
-	"io/ioutil"
+	"errors"
+	"fmt"
+	"io"
+	"io/fs"
 	"os"
 )
 
@@ -13,7 +16,23 @@ import (
 // is "-", in which case it reads from stdin.
 func FileContentsOrStdIn(s string) ([]byte, error) {
 	if s == "-" {
-		return ioutil.ReadAll(os.Stdin)
+		return io.ReadAll(os.Stdin)
 	}
-	return ioutil.ReadFile(s)
+	return os.ReadFile(s)
+}
+
+func WriteOutput(outfilename string, contents []byte, infilename string, force bool) error {
+	if outfilename == "" {
+		outfilename = infilename
+	}
+	if outfilename == "-" {
+		_, err := os.Stdout.Write(contents)
+		return err
+	}
+	if !force {
+		if _, err := os.Stat(outfilename); !errors.Is(err, fs.ErrNotExist) {
+			return fmt.Errorf("cannot overwrite file %q without --force (-f)", outfilename)
+		}
+	}
+	return os.WriteFile(outfilename, contents, 0666)
 }

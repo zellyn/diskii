@@ -5,6 +5,8 @@ package main
 import (
 	"github.com/zellyn/diskii/cmd"
 	"github.com/zellyn/diskii/dos3"
+	"github.com/zellyn/diskii/prodos"
+	"github.com/zellyn/diskii/supermon"
 	"github.com/zellyn/diskii/types"
 
 	"fmt"
@@ -14,11 +16,10 @@ import (
 )
 
 var cli struct {
-	Debug  bool   `kong:"short='v',help='Enable debug mode.'"`
-	Order  string `kong:"default='auto',enum='auto,raw,do,po',help='Logical-to-physical sector order.'"`
-	System string `kong:"default='auto',enum='auto,dos3',help='DOS system used for image.'"`
+	Debug bool `kong:"short='v',help='Enable debug mode.'"`
 
-	Ls cmd.LsCmd `cmd:"" aliases:"cat,catalog" help:"List paths."`
+	Ls      cmd.LsCmd      `cmd:"" aliases:"cat,catalog" help:"List paths."`
+	Reorder cmd.ReorderCmd `cmd:"" help:"Reorder disk images."`
 }
 
 func run() error {
@@ -34,13 +35,11 @@ func run() error {
 	)
 
 	globals := &types.Globals{
-		Debug:  cli.Debug,
-		Order:  cli.Order,
-		System: cli.System,
+		Debug: cli.Debug,
 		DiskOperatorFactories: []types.OperatorFactory{
 			dos3.OperatorFactory{},
-			// supermon.OperatorFactory,
-			// prodos.DiskOperatorFactory,
+			supermon.OperatorFactory{},
+			prodos.OperatorFactory{},
 		},
 	}
 	// Call the Run() method of the selected parsed command.

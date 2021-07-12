@@ -9,8 +9,7 @@ import (
 )
 
 func TestBasicLoad(t *testing.T) {
-	bb := data.MustAsset("data/disks/dos33master.woz")
-	wz, err := woz.Decode(bytes.NewReader(bb))
+	wz, err := woz.Decode(bytes.NewReader(data.DOS33master_woz))
 	if err != nil {
 		t.Fatal(err)
 	}

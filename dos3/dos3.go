@@ -7,7 +7,6 @@ package dos3
 import (
 	"encoding/binary"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/zellyn/diskii/disk"
@@ -500,9 +499,6 @@ func readCatalogSectors(diskbytes []byte, debug bool) ([]CatalogSector, error) {
 	if err := v.Validate(); err != nil {
 		return nil, fmt.Errorf("Invalid VTOC sector: %v", err)
 	}
-	if debug {
-		fmt.Fprintf(os.Stderr, "Read VTOC sector: %#v\n", v)
-	}
 
 	nextTrack := v.CatalogTrack
 	nextSector := v.CatalogSector
@@ -686,9 +682,13 @@ func (of OperatorFactory) Name() string {
 
 // SeemsToMatch returns true if the []byte disk image seems to match the
 // system of this operator.
-func (of OperatorFactory) SeemsToMatch(diskbytes []byte, debug bool) bool {
+func (of OperatorFactory) SeemsToMatch(rawbytes []byte, debug bool) bool {
 	// For now, just return true if we can run Catalog successfully.
-	_, _, err := ReadCatalog(diskbytes, debug)
+	swizzled, err := of.swizzle(rawbytes)
+	if err != nil {
+		return false
+	}
+	_, _, err = ReadCatalog(swizzled, debug)
 	if err != nil {
 		return false
 	}
@@ -696,6 +696,14 @@ func (of OperatorFactory) SeemsToMatch(diskbytes []byte, debug bool) bool {
 }
 
 // Operator returns an Operator for the []byte disk image.
-func (of OperatorFactory) Operator(diskbytes []byte, debug bool) (types.Operator, error) {
-	return operator{data: diskbytes, debug: debug}, nil
+func (of OperatorFactory) Operator(rawbytes []byte, debug bool) (types.Operator, error) {
+	swizzled, err := of.swizzle(rawbytes)
+	if err != nil {
+		return nil, err
+	}
+	return operator{data: swizzled, debug: debug}, nil
+}
+
+func (of OperatorFactory) swizzle(rawbytes []byte) ([]byte, error) {
+	return disk.Swizzle(rawbytes, disk.Dos33PhysicalToLogicalSectorMap)
 }

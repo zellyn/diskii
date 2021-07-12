@@ -85,3 +85,8 @@ F8        CLD
 
 echo -n -e '\x20\x40\x03\x6D\x01\xDC\x2C\x02\xDF\x2C\x00\x60\xF8\x4C\x00\x60' | diskii put -f ./lib/supermon/testdata/chacha20.dsk DF01:FHELLO -
 echo -n -e '\x20\x58\xFC\xA2\x00\xBD\x13\x60\xF0\x06\x20\xED\xFD\xE8\xD0\xF5\x4C\x10\x60\xC8\xC5\xCC\xCC\xCF\xAC\xA0\xD7\xCF\xD2\xCC\xC4\x00' | diskii put -f ./lib/supermon/testdata/chacha20.dsk DF02:FWORLD -
+
+* Sources
+
+** ProDOS
+[[https://www.apple.asimov.net/documentation/source_code/Apple%20ProDOS%20Boot%20Source.pdf][ProDOS boot source]]
