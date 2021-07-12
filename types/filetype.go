@@ -57,62 +57,62 @@ const (
 	// | C0-EE | ProDOS | ProDOS reserved for future use
 )
 
-// filetypeInfo holds name information about filetype constants.
-type filetypeInfo struct {
+// FiletypeInfo holds name information about filetype constants.
+type FiletypeInfo struct {
 	Type        Filetype // The type itself
 	Name        string   // The constant name, without the "Filetype" prefix
 	ThreeLetter string   // The three-letter abbreviation (ProDOS)
 	OneLetter   string   // The one-letter abbreviation (DOS 3.x)
 	Desc        string   // The description of the type
-	Stringified string   // (Generated) result of calling String() on the Constant
 	Extra       bool     // If true, exclude from normal display listing
+
+	Stringified string // (Generated) result of calling String() on the Constant
+	NamesString string // (Generated) the names usable for this filetype.
 }
 
 // names of Filetype constants above
-var filetypeInfos = []filetypeInfo{
-	{FiletypeTypeless, "Typeless", "", "", "Typeless file", "", false},
-	{FiletypeBadBlocks, "BadBlocks", "", "", "Bad blocks file", "", false},
-	{FiletypeSOSPascalCode, "SOSPascalCode", "", "", "PASCAL code file", "", true},
-	{FiletypeSOSPascalText, "SOSPascalText", "", "", "PASCAL text file", "", true},
-	{FiletypeASCIIText, "ASCIIText", "T", "TXT", "ASCII text file", "", false},
-	{FiletypeSOSPascalText2, "SOSPascalText2", "", "", "PASCAL text file", "", true},
-	{FiletypeBinary, "Binary", "B", "BIN", "Binary file", "", false},
-	{FiletypeFont, "Font", "", "", "Font file", "", true},
-	{FiletypeGraphicsScreen, "GraphicsScreen", "", "", "Graphics screen file", "", true},
-	{FiletypeBusinessBASIC, "BusinessBASIC", "", "", "Business BASIC program file", "", true},
-	{FiletypeBusinessBASICData, "BusinessBASICData", "", "", "Business BASIC data file", "", true},
-	{FiletypeSOSWordProcessor, "SOSWordProcessor", "", "", "Word processor file", "", true},
-	{FiletypeSOSSystem, "SOSSystem", "", "", "SOS system file", "", true},
-	{FiletypeDirectory, "Directory", "", "DIR", "Directory file", "", false},
-	{FiletypeRPSData, "RPSData", "", "", "RPS data file", "", true},
-	{FiletypeRPSIndex, "RPSIndex", "", "", "RPS index file", "", true},
-	{FiletypeAppleWorksDatabase, "AppleWorksDatabase", "", "ADB", "AppleWorks data base file", "", false},
-	{FiletypeAppleWorksWordProcessor, "AppleWorksWordProcessor", "", "AWP", "AppleWorks word processing file", "", false},
-	{FiletypeAppleWorksSpreadsheet, "AppleWorksSpreadsheet", "", "ASP", "AppleWorks spreadsheet file", "", false},
-	{FiletypePascal, "Pascal", "", "PAS", "ProDOS PASCAL file", "", false},
-	{FiletypeCommand, "Command", "", "CMD", "Added command file", "", false},
-	{FiletypeUserDefinedF1, "UserDefinedF1", "", "", "ProDOS user defined file type F1", "", true},
-	{FiletypeUserDefinedF2, "UserDefinedF2", "", "", "ProDOS user defined file type F2", "", true},
-	{FiletypeUserDefinedF3, "UserDefinedF3", "", "", "ProDOS user defined file type F3", "", true},
-	{FiletypeUserDefinedF4, "UserDefinedF4", "", "", "ProDOS user defined file type F4", "", true},
-	{FiletypeUserDefinedF5, "UserDefinedF5", "", "", "ProDOS user defined file type F5", "", true},
-	{FiletypeUserDefinedF6, "UserDefinedF6", "", "", "ProDOS user defined file type F6", "", true},
-	{FiletypeUserDefinedF7, "UserDefinedF7", "", "", "ProDOS user defined file type F7", "", true},
-	{FiletypeUserDefinedF8, "UserDefinedF8", "", "", "ProDOS user defined file type F8", "", true},
-	{FiletypeIntegerBASIC, "IntegerBASIC", "I", "INT", "Integer BASIC program file", "", false},
-	{FiletypeIntegerBASICVariables, "IntegerBASICVariables", "", "IVR", "Integer BASIC variables file", "", false},
-	{FiletypeApplesoftBASIC, "ApplesoftBASIC", "A", "BAS", "Applesoft BASIC program file", "", false},
-	{FiletypeApplesoftBASICVariables, "ApplesoftBASICVariables", "", "VAR", "Applesoft BASIC variables file", "", false},
-	{FiletypeRelocatable, "Relocatable", "R", "REL", "EDASM relocatable object module file", "", false},
-	{FiletypeSystem, "System", "", "SYS", "System file", "", false},
-	{FiletypeS, "S", "", "S", `DOS 3.3 Type "S"`, "", false},
-	{FiletypeNewA, "NewA", "", "A", `DOS 3.3 Type "new A"`, "", false},
-	{FiletypeNewB, "NewB", "", "B", `DOS 3.3 Type "new B"`, "", false},
+var filetypeInfos = []FiletypeInfo{
+	{Type: FiletypeTypeless, Name: "Typeless", Desc: "Typeless file"},
+	{Type: FiletypeBadBlocks, Name: "BadBlocks", Desc: "Bad blocks file"},
+	{Type: FiletypeSOSPascalCode, Name: "SOSPascalCode", Desc: "PASCAL code file", Extra: true},
+	{Type: FiletypeSOSPascalText, Name: "SOSPascalText", Desc: "PASCAL text file", Extra: true},
+	{Type: FiletypeASCIIText, Name: "ASCIIText", ThreeLetter: "TXT", OneLetter: "T", Desc: "ASCII text file"},
+	{Type: FiletypeSOSPascalText2, Name: "SOSPascalText2", Desc: "PASCAL text file", Extra: true},
+	{Type: FiletypeBinary, Name: "Binary", ThreeLetter: "BIN", OneLetter: "B", Desc: "Binary file"},
+	{Type: FiletypeFont, Name: "Font", Desc: "Font file", Extra: true},
+	{Type: FiletypeGraphicsScreen, Name: "GraphicsScreen", Desc: "Graphics screen file", Extra: true},
+	{Type: FiletypeBusinessBASIC, Name: "BusinessBASIC", Desc: "Business BASIC program file", Extra: true},
+	{Type: FiletypeBusinessBASICData, Name: "BusinessBASICData", Desc: "Business BASIC data file", Extra: true},
+	{Type: FiletypeSOSWordProcessor, Name: "SOSWordProcessor", Desc: "Word processor file", Extra: true},
+	{Type: FiletypeSOSSystem, Name: "SOSSystem", Desc: "SOS system file", Extra: true},
+	{Type: FiletypeDirectory, Name: "Directory", ThreeLetter: "DIR", OneLetter: "D", Desc: "Directory file"},
+	{Type: FiletypeRPSData, Name: "RPSData", Desc: "RPS data file", Extra: true},
+	{Type: FiletypeRPSIndex, Name: "RPSIndex", Desc: "RPS index file", Extra: true},
+	{Type: FiletypeAppleWorksDatabase, Name: "AppleWorksDatabase", ThreeLetter: "ADB", Desc: "AppleWorks data base file"},
+	{Type: FiletypeAppleWorksWordProcessor, Name: "AppleWorksWordProcessor", ThreeLetter: "AWP", Desc: "AppleWorks word processing file"},
+	{Type: FiletypeAppleWorksSpreadsheet, Name: "AppleWorksSpreadsheet", ThreeLetter: "ASP", Desc: "AppleWorks spreadsheet file"},
+	{Type: FiletypePascal, Name: "Pascal", ThreeLetter: "PAS", Desc: "ProDOS PASCAL file"},
+	{Type: FiletypeCommand, Name: "Command", ThreeLetter: "CMD", Desc: "Added command file"},
+	{Type: FiletypeUserDefinedF1, Name: "UserDefinedF1", Desc: "ProDOS user defined file type F1", Extra: true},
+	{Type: FiletypeUserDefinedF2, Name: "UserDefinedF2", Desc: "ProDOS user defined file type F2", Extra: true},
+	{Type: FiletypeUserDefinedF3, Name: "UserDefinedF3", Desc: "ProDOS user defined file type F3", Extra: true},
+	{Type: FiletypeUserDefinedF4, Name: "UserDefinedF4", Desc: "ProDOS user defined file type F4", Extra: true},
+	{Type: FiletypeUserDefinedF5, Name: "UserDefinedF5", Desc: "ProDOS user defined file type F5", Extra: true},
+	{Type: FiletypeUserDefinedF6, Name: "UserDefinedF6", Desc: "ProDOS user defined file type F6", Extra: true},
+	{Type: FiletypeUserDefinedF7, Name: "UserDefinedF7", Desc: "ProDOS user defined file type F7", Extra: true},
+	{Type: FiletypeUserDefinedF8, Name: "UserDefinedF8", Desc: "ProDOS user defined file type F8", Extra: true},
+	{Type: FiletypeIntegerBASIC, Name: "IntegerBASIC", ThreeLetter: "INT", OneLetter: "I", Desc: "Integer BASIC program file"},
+	{Type: FiletypeIntegerBASICVariables, Name: "IntegerBASICVariables", ThreeLetter: "IVR", Desc: "Integer BASIC variables file"},
+	{Type: FiletypeApplesoftBASIC, Name: "ApplesoftBASIC", ThreeLetter: "BAS", OneLetter: "A", Desc: "Applesoft BASIC program file"},
+	{Type: FiletypeApplesoftBASICVariables, Name: "ApplesoftBASICVariables", ThreeLetter: "VAR", Desc: "Applesoft BASIC variables file"},
+	{Type: FiletypeRelocatable, Name: "Relocatable", ThreeLetter: "REL", OneLetter: "R", Desc: "EDASM relocatable object module file"},
+	{Type: FiletypeSystem, Name: "System", ThreeLetter: "SYS", Desc: "System file"},
+	{Type: FiletypeS, Name: "S", OneLetter: "S", Desc: `DOS 3.3 Type "S"`},
+	{Type: FiletypeNewA, Name: "NewA", OneLetter: "A", Desc: `DOS 3.3 Type "new A"`},
+	{Type: FiletypeNewB, Name: "NewB", OneLetter: "B", Desc: `DOS 3.3 Type "new B"`},
 }
 
-var filetypeInfosMap map[Filetype]filetypeInfo
-var filetypeNames []string
-var filetypeNamesExtras []string
+var filetypeInfosMap map[Filetype]FiletypeInfo
 
 func init() {
 	sosReserved := []Filetype{0x0D, 0x0E, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18}
@@ -124,7 +124,7 @@ func init() {
 		prodosReserved = append(prodosReserved, i)
 	}
 	for _, typ := range sosReserved {
-		info := filetypeInfo{
+		info := FiletypeInfo{
 			Type:        typ,
 			Name:        fmt.Sprintf("SOSReserved%02X", int(typ)),
 			ThreeLetter: "",
@@ -135,7 +135,7 @@ func init() {
 		filetypeInfos = append(filetypeInfos, info)
 	}
 	for _, typ := range prodosReserved {
-		info := filetypeInfo{
+		info := FiletypeInfo{
 			Type:        typ,
 			Name:        fmt.Sprintf("ProDOSReserved%02X", int(typ)),
 			ThreeLetter: "",
@@ -147,25 +147,24 @@ func init() {
 	}
 
 	seen := map[string]bool{}
-	filetypeInfosMap = make(map[Filetype]filetypeInfo, len(filetypeInfos))
+	filetypeInfosMap = make(map[Filetype]FiletypeInfo, len(filetypeInfos))
 	for i, info := range filetypeInfos {
 		info.Stringified = info.Desc + " (" + info.Name
+		info.NamesString = info.Name
 		if info.ThreeLetter != "" && !seen[info.ThreeLetter] {
 			info.Stringified += "|" + info.ThreeLetter
+			info.NamesString += "|" + info.ThreeLetter
 			seen[info.ThreeLetter] = true
 		}
 		if info.OneLetter != "" && info.OneLetter != info.Name && !seen[info.OneLetter] {
 			info.Stringified += "|" + info.OneLetter
+			info.NamesString += "|" + info.OneLetter
 			seen[info.OneLetter] = true
 		}
 		info.Stringified += ")"
 
 		filetypeInfos[i] = info
 		filetypeInfosMap[info.Type] = info
-		filetypeNamesExtras = append(filetypeNamesExtras, info.Stringified)
-		if !info.Extra {
-			filetypeNames = append(filetypeNames, info.Stringified)
-		}
 	}
 }
 
@@ -187,10 +186,16 @@ func FiletypeForName(name string) (Filetype, error) {
 	return 0, fmt.Errorf("Unknown Filetype: %q", name)
 }
 
-// FiletypeNames returns a list of all filetype names.
-func FiletypeNames(all bool) []string {
+// FiletypeInfos returns a list information on all filetypes.
+func FiletypeInfos(all bool) []FiletypeInfo {
 	if all {
-		return filetypeNamesExtras
+		return filetypeInfos
 	}
-	return filetypeNames
+	var result []FiletypeInfo
+	for _, info := range filetypeInfos {
+		if !info.Extra {
+			result = append(result, info)
+		}
+	}
+	return result
 }

@@ -18,8 +18,9 @@ import (
 var cli struct {
 	Debug bool `kong:"short='v',help='Enable debug mode.'"`
 
-	Ls      cmd.LsCmd      `cmd:"" aliases:"cat,catalog" help:"List paths."`
-	Reorder cmd.ReorderCmd `cmd:"" help:"Reorder disk images."`
+	Ls        cmd.LsCmd        `cmd:"" aliases:"cat,catalog" help:"List paths."`
+	Reorder   cmd.ReorderCmd   `cmd:"" help:"Reorder disk images."`
+	Filetypes cmd.FiletypesCmd `cmd:"" help:"Print a list of filetypes understood by diskii."`
 }
 
 func run() error {

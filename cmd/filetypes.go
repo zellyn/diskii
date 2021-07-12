@@ -5,39 +5,22 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"text/tabwriter"
 
-	"github.com/spf13/cobra"
 	"github.com/zellyn/diskii/types"
 )
 
-var all bool // flag for whether to show all filetypes
-
-// filetypesCmd represents the filetypes command, used to display
-// valid filetypes recognized by diskii.
-var filetypesCmd = &cobra.Command{
-	Use:   "filetypes",
-	Short: "print a list of filetypes",
-	Long:  `Print a list of filetypes understood by diskii`,
-	Run: func(cmd *cobra.Command, args []string) {
-		if err := runFiletypes(args); err != nil {
-			fmt.Fprintln(os.Stderr, err.Error())
-			os.Exit(-1)
-		}
-	},
+type FiletypesCmd struct {
+	All bool `kong:"help='Display all types, including SOS types and reserved ranges.'"`
 }
 
-func init() {
-	RootCmd.AddCommand(filetypesCmd)
-	filetypesCmd.Flags().BoolVarP(&all, "all", "a", false, "display all types, including SOS types and reserved ranges")
-}
-
-// runFiletypes performs the actual listing of filetypes.
-func runFiletypes(args []string) error {
-	if len(args) != 0 {
-		return fmt.Errorf("filetypes expects no arguments")
+func (f *FiletypesCmd) Run(globals *types.Globals) error {
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
+	fmt.Fprintln(w, "Description\tName\tThree-letter Name\tOne-letter Name")
+	fmt.Fprintln(w, "-----------\t----\t-----------------\t---------------")
+	for _, typ := range types.FiletypeInfos(f.All) {
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", typ.Desc, typ.Name, typ.ThreeLetter, typ.OneLetter)
 	}
-	for _, typ := range types.FiletypeNames(all) {
-		fmt.Println(typ)
-	}
+	w.Flush()
 	return nil
 }

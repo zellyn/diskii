@@ -82,6 +82,7 @@ will be likely to get priority.
   - [ ] Implement it for DOS 3.3
 - [x] Add basic ProDOS structures
 - [ ] Add ProDOS support
+- [x] Make `filetypes` command use a tabwriter to write as a table
 
 # Related tools
 
