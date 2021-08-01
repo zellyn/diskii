@@ -12,6 +12,7 @@ import (
 
 const helloName = "FHELLO" // filename to use (if Super-Mon)
 
+// NakedOSCmd is the kong `nakedos` sub-command.
 type NakedOSCmd struct {
 	Mkhello MkHelloCmd `kong:"cmd,help='Create an FHELLO program that loads and runs another file.'"`
 }
@@ -23,6 +24,7 @@ func (n NakedOSCmd) Help() string {
 	Presentation: https://www.kansasfest.org/2012/08/2010-haye-nakedos/`
 }
 
+// MkHelloCmd is the kong `mkhello` command.
 type MkHelloCmd struct {
 	Order types.DiskOrder `kong:"default='auto',enum='auto,do,po',help='Logical-to-physical sector order.'"`
 
@@ -33,6 +35,7 @@ type MkHelloCmd struct {
 	Start   uint16 `kong:"type='anybaseuint16',default='0xFFFF',help='Address to jump to. Defaults to 0xFFFF, which means “same as address flag”'"`
 }
 
+// Help displays extended help and examples.
 func (m MkHelloCmd) Help() string {
 	return `This command creates a very short DF01:FHELLO program that simply loads another program of your choice.
 	
@@ -44,6 +47,7 @@ Examples:
 	mkhello test.dsk --address 0x2000 --start 0x2100 DF06`
 }
 
+// Run the `mkhello` command.
 func (m *MkHelloCmd) Run(globals *types.Globals) error {
 	if m.Start == 0xFFFF {
 		m.Start = m.Address

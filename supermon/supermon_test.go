@@ -4,6 +4,7 @@ package supermon
 
 import (
 	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -48,7 +49,7 @@ func loadSectorMap(filename string) (SectorMap, []byte, error) {
 // getOperator gets a types.Operator for the given NakedOS disk, assumed to be
 // in "do" order.
 func getOperator(filename string) (types.Operator, error) {
-	f, err := os.Open(filename)
+	f, err := os.Open(filepath.Clean(filename))
 	if err != nil {
 		return nil, err
 	}

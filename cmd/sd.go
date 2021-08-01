@@ -12,6 +12,7 @@ import (
 	"github.com/zellyn/diskii/types"
 )
 
+// SDCmd is the kong `mksd` command.
 type SDCmd struct {
 	Order types.DiskOrder `kong:"default='auto',enum='auto,do,po',help='Logical-to-physical sector order.'"`
 
@@ -22,6 +23,7 @@ type SDCmd struct {
 	Start   uint16 `kong:"type='anybaseuint16',default='0xFFFF',help='Address to jump to. Defaults to 0xFFFF, which means “same as address flag”'"`
 }
 
+// Help displays extended help and examples.
 func (s SDCmd) Help() string {
 	return `
 See https://github.com/peterferrie/standard-delivery for details.
@@ -34,6 +36,7 @@ Examples:
 	diskii mksd test.dsk foo.o --address 0x2000 --start 0x2100`
 }
 
+// Run the `mksd` command.
 func (s *SDCmd) Run(globals *types.Globals) error {
 	if s.Start == 0xFFFF {
 		s.Start = s.Address

@@ -9,6 +9,7 @@ import (
 	"github.com/zellyn/diskii/types"
 )
 
+// DumpCmd is the kong `dump` command.
 type DumpCmd struct {
 	Order  types.DiskOrder `kong:"default='auto',enum='auto,do,po',help='Logical-to-physical sector order.'"`
 	System string          `kong:"default='auto',enum='auto,dos3',help='DOS system used for image.'"`
@@ -17,12 +18,14 @@ type DumpCmd struct {
 	Filename  string `kong:"arg,required,help='Filename to use on disk.'"`
 }
 
+// Help displays extended help and examples.
 func (d DumpCmd) Help() string {
 	return `Examples:
 	# Dump file GREMLINS on disk image games.dsk.
 	diskii dump games.dsk GREMLINS`
 }
 
+// Run the `dump` command.
 func (d *DumpCmd) Run(globals *types.Globals) error {
 	op, _, err := disk.OpenFilename(d.DiskImage, d.Order, d.System, globals.DiskOperatorFactories, globals.Debug)
 	if err != nil {

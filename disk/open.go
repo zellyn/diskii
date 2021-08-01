@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/zellyn/diskii/helpers"
@@ -16,15 +17,15 @@ func OpenFilename(filename string, order types.DiskOrder, system string, operato
 	if filename == "-" {
 		return OpenFile(os.Stdin, order, system, operatorFactories, debug)
 	}
-	file, err := os.Open(filename)
+	file, err := os.Open(filepath.Clean(filename))
 	if err != nil {
 		return nil, "", err
 	}
 	return OpenFile(file, order, system, operatorFactories, debug)
 }
 
-// OpenImage attempts to open a disk or device image, using the provided ordering and system type.
-// OpenImage will close the file.
+// OpenFile attempts to open a disk or device image, using the provided ordering and system type.
+// OpenFile will close the file.
 func OpenFile(file *os.File, order types.DiskOrder, system string, operatorFactories []types.OperatorFactory, debug bool) (types.Operator, types.DiskOrder, error) {
 	bb, err := io.ReadAll(file)
 	if err != nil {
@@ -171,17 +172,6 @@ func Swizzle(diskimage []byte, order []int) ([]byte, error) {
 		}
 	}
 	return result, nil
-}
-
-func UnSwizzle(diskimage []byte, order []int) ([]byte, error) {
-	if err := validateOrder(order); err != nil {
-		return nil, fmt.Errorf("called UnSwizzle with weird order: %w", err)
-	}
-	reverseOrder := make([]int, FloppySectors)
-	for index, mapping := range order {
-		reverseOrder[mapping] = index
-	}
-	return Swizzle(diskimage, reverseOrder)
 }
 
 // validateOrder validates that an order mapping is valid, and maps [0,15] onto

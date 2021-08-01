@@ -11,10 +11,12 @@ import (
 	"github.com/zellyn/diskii/types"
 )
 
+// ApplesoftCmd is the kong `applesoft` command.
 type ApplesoftCmd struct {
 	Decode DecodeCmd `kong:"cmd,help='Convert a binary Applesoft program to a text LISTing.'"`
 }
 
+// DecodeCmd is the kong `decode` command.
 type DecodeCmd struct {
 	Filename string `kong:"arg,default='-',type='existingfile',help='Binary Applesoft file to read, or “-” for stdin.'"`
 
@@ -22,12 +24,14 @@ type DecodeCmd struct {
 	Raw      bool   `kong:"short='r',help='Print raw control codes (no escaping)'"`
 }
 
+// Help displays extended help and examples.
 func (d DecodeCmd) Help() string {
 	return `Examples:
 	# Dump the contents of HELLO and then decode it.
 	diskii dump dos33master.dsk HELLO | diskii applesoft decode -`
 }
 
+// Run the decode command.
 func (d *DecodeCmd) Run(globals *types.Globals) error {
 	contents, err := helpers.FileContentsOrStdIn(d.Filename)
 	if err != nil {
@@ -38,9 +42,9 @@ func (d *DecodeCmd) Run(globals *types.Globals) error {
 		return err
 	}
 	if d.Raw {
-		os.Stdout.WriteString(listing.String())
+		_, _ = os.Stdout.WriteString(listing.String())
 	} else {
-		os.Stdout.WriteString(basic.ChevronControlCodes(listing.String()))
+		_, _ = os.Stdout.WriteString(basic.ChevronControlCodes(listing.String()))
 	}
 	return nil
 }

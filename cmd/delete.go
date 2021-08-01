@@ -9,6 +9,7 @@ import (
 	"github.com/zellyn/diskii/types"
 )
 
+// DeleteCmd is the kong `delete` command.
 type DeleteCmd struct {
 	Order     types.DiskOrder `kong:"default='auto',enum='auto,do,po',help='Logical-to-physical sector order.'"`
 	System    string          `kong:"default='auto',enum='auto,dos3',help='DOS system used for image.'"`
@@ -18,12 +19,14 @@ type DeleteCmd struct {
 	Filename  string `kong:"arg,required,help='Filename to use on disk.'"`
 }
 
+// Help displays extended help and examples.
 func (d DeleteCmd) Help() string {
 	return `Examples:
 	# Delete file GREMLINS on disk image games.dsk.
 	diskii rm games.dsk GREMLINS`
 }
 
+// Run the `delete` command.
 func (d *DeleteCmd) Run(globals *types.Globals) error {
 	op, order, err := disk.OpenFilename(d.DiskImage, d.Order, d.System, globals.DiskOperatorFactories, globals.Debug)
 	if err != nil {

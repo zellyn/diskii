@@ -1,3 +1,4 @@
+// Package data is a bunch of go:embed embedded files.
 package data
 
 import _ "embed"

@@ -8,6 +8,7 @@ import (
 	"github.com/zellyn/diskii/types"
 )
 
+// ReorderCmd is the kong `reorder` command.
 type ReorderCmd struct {
 	Order     types.DiskOrder `kong:"default='auto',enum='auto,do,po',help='Logical-to-physical sector order.'"`
 	NewOrder  types.DiskOrder `kong:"default='auto',enum='auto,do,po',help='New Logical-to-physical sector order.'"`
@@ -17,6 +18,7 @@ type ReorderCmd struct {
 	NewDiskImage string `kong:"arg,optional,type='path',help='Disk image to write, if different.'"`
 }
 
+// Run the `reorder` command.
 func (r *ReorderCmd) Run(globals *types.Globals) error {
 	fromOrderName, toOrderName, err := getOrders(r.DiskImage, r.Order, r.NewDiskImage, r.NewOrder)
 	if err != nil {

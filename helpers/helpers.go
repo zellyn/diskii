@@ -21,6 +21,7 @@ func FileContentsOrStdIn(s string) ([]byte, error) {
 	return os.ReadFile(s)
 }
 
+// WriteOutput writes a byte slice to the given filename, using `-` for standard out.
 func WriteOutput(filename string, contents []byte, force bool) error {
 	if filename == "-" {
 		_, err := os.Stdout.Write(contents)

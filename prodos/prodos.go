@@ -60,8 +60,10 @@ func (bp bitmapPart) ToBlock() (disk.Block, error) {
 	return bp.data, nil
 }
 
+// VolumeBitMap represents a volume bitmap.
 type VolumeBitMap []bitmapPart
 
+// NewVolumeBitMap returns a volume bitmap of the given size.
 func NewVolumeBitMap(startBlock uint16, blocks uint16) VolumeBitMap {
 	vbm := VolumeBitMap(make([]bitmapPart, (blocks+(512*8)-1)/(512*8)))
 	for i := range vbm {
@@ -73,10 +75,12 @@ func NewVolumeBitMap(startBlock uint16, blocks uint16) VolumeBitMap {
 	return vbm
 }
 
+// MarkUsed marks the given block as used.
 func (vbm VolumeBitMap) MarkUsed(block uint16) {
 	vbm.mark(block, false)
 }
 
+// MarkUnused marks the given block as free.
 func (vbm VolumeBitMap) MarkUnused(block uint16) {
 	vbm.mark(block, true)
 }
@@ -261,6 +265,7 @@ func (vdb VolumeDirectoryBlock) Validate() (errors []error) {
 	return errors
 }
 
+// VolumeDirectoryHeader represents a volume directory header.
 type VolumeDirectoryHeader struct {
 	TypeAndNameLength byte     // Storage type (top four bits) and volume name length (lower four).
 	VolumeName        [15]byte // Volume name (actual length defined in TypeAndNameLength)
@@ -319,14 +324,20 @@ func (vdh VolumeDirectoryHeader) Validate() (errors []error) {
 	return errors
 }
 
+// Access represents a level of file access.
 type Access byte
 
 const (
-	AccessReadable           Access = 0x01
-	AccessWritable           Access = 0x02
+	// AccessReadable denotes a file as readable.
+	AccessReadable Access = 0x01
+	// AccessWritable denotes a file as writable.
+	AccessWritable Access = 0x02
+	// AccessChangedSinceBackup is (I think) always true on real disks.
 	AccessChangedSinceBackup Access = 0x20
-	AccessRenamable          Access = 0x40
-	AccessDestroyable        Access = 0x80
+	// AccessRenamable denotes a file as renamable.
+	AccessRenamable Access = 0x40
+	// AccessDestroyable denotes a file as deletable.
+	AccessDestroyable Access = 0x80
 )
 
 // FileDescriptor is the entry in the volume directory for a file or
@@ -420,7 +431,7 @@ func (fd FileDescriptor) Validate() (errors []error) {
 	return errors
 }
 
-// An index block contains 256 16-bit block numbers, pointing to other
+// IndexBlock is an index block, containing 256 16-bit block numbers, pointing to other
 // blocks. The LSBs are stored in the first half, MSBs in the second.
 type IndexBlock disk.Block
 
@@ -537,6 +548,7 @@ func (sb SubdirectoryBlock) Validate() (errors []error) {
 	return errors
 }
 
+// SubdirectoryHeader represents a subdirectory header.
 type SubdirectoryHeader struct {
 	TypeAndNameLength byte     // Storage type (top four bits) and subdirectory name length (lower four).
 	SubdirectoryName  [15]byte // Subdirectory name (actual length defined in TypeAndNameLength)

@@ -17,13 +17,19 @@ type Descriptor struct {
 	Type     Filetype
 }
 
+// DiskOrder specifies the logical disk ordering.
 type DiskOrder string
 
 const (
-	DiskOrderDO      = DiskOrder("do")
-	DiskOrderPO      = DiskOrder("po")
-	DiskOrderRaw     = DiskOrder("raw")
-	DiskOrderAuto    = DiskOrder("auto")
+	// DiskOrderDO is the DOS 3.3 logical ordering.
+	DiskOrderDO = DiskOrder("do")
+	// DiskOrderPO is the ProDOS logical ordering.
+	DiskOrderPO = DiskOrder("po")
+	// DiskOrderRaw is the logical ordering that doesn't change anything.
+	DiskOrderRaw = DiskOrder("raw")
+	// DiskOrderAuto is the logical ordering that tells diskii to guess.
+	DiskOrderAuto = DiskOrder("auto")
+	// DiskOrderUnknown is usually an error condition, or a signal that guessing failed.
 	DiskOrderUnknown = DiskOrder("")
 )
 

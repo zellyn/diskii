@@ -65,3 +65,6 @@ type TrackSector struct {
 	Track  byte
 	Sector byte
 }
+
+// Block is a ProDOS block: 512 bytes.
+type Block [512]byte

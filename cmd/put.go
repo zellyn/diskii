@@ -10,6 +10,7 @@ import (
 	"github.com/zellyn/diskii/types"
 )
 
+// PutCmd is the kong `put` command.
 type PutCmd struct {
 	Order        types.DiskOrder `kong:"default='auto',enum='auto,do,po',help='Logical-to-physical sector order.'"`
 	System       string          `kong:"default='auto',enum='auto,dos3',help='DOS system used for image.'"`
@@ -21,12 +22,14 @@ type PutCmd struct {
 	SourceFilename string `kong:"arg,required,type='existingfile',help='Name of file containing data to put.'"`
 }
 
+// Help displays extended help and examples.
 func (p PutCmd) Help() string {
 	return `Examples:
 	# Put file gremlins.o onto disk image games.dsk, using the filename GREMLINS.
 	diskii put games.dsk GREMLINS gremlins.o`
 }
 
+// Run the `put` command.
 func (p *PutCmd) Run(globals *types.Globals) error {
 	if p.DiskImage == "-" {
 		if p.SourceFilename == "-" {

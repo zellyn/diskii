@@ -10,6 +10,7 @@ import (
 	"github.com/zellyn/diskii/types"
 )
 
+// LsCmd is the kong `ls` command.
 type LsCmd struct {
 	Order  types.DiskOrder `kong:"default='auto',enum='auto,do,po',help='Logical-to-physical sector order.'"`
 	System string          `kong:"default='auto',enum='auto,dos3,prodos,nakedos',help='DOS system used for image.'"`
@@ -19,6 +20,7 @@ type LsCmd struct {
 	Directory  string   `kong:"arg,optional,help='Directory to list (ProDOS only).'"`
 }
 
+// Help displays extended help and examples.
 func (l LsCmd) Help() string {
 	return `Examples:
 	# Simple ls of a disk image
@@ -27,6 +29,7 @@ func (l LsCmd) Help() string {
 	diskii ls --order do --system nakedos Super-Mon-2.0.dsk`
 }
 
+// Run the `ls` command.
 func (l *LsCmd) Run(globals *types.Globals) error {
 	op, order, err := disk.OpenFile(l.Image, l.Order, l.System, globals.DiskOperatorFactories, globals.Debug)
 	if err != nil {
