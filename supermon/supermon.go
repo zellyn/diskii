@@ -61,7 +61,7 @@ func (sm SectorMap) FirstFreeFile() byte {
 	return 0
 }
 
-// Persist writes the current contenst of a sector map back back to
+// Persist writes the current contents of a sector map back back to
 // disk.
 func (sm SectorMap) Persist(diskbytes []byte) error {
 	sector09, err := disk.ReadSector(diskbytes, 0, 9)

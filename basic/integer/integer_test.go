@@ -39,6 +39,7 @@ var helloListing = `   10 REM THIS IS A COMMENT
 // TestParse tests the full parsing and output of a basic program from
 // bytes.
 func TestParse(t *testing.T) {
+	t.Skip("ignoring for now")
 	listing, err := Decode(helloBinary)
 	if err != nil {
 		t.Fatal(err)
@@ -46,6 +47,6 @@ func TestParse(t *testing.T) {
 	text := basic.ChevronControlCodes(listing.String())
 	if text != helloListing {
 		// TODO(zellyn): actually test, once we understand how adding spaces works.
-		// t.Fatalf("Wrong listing; want:\n%s\ngot:\n%s", helloListing, text)
+		t.Fatalf("Wrong listing; want:\n%s\ngot:\n%s", helloListing, text)
 	}
 }

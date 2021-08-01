@@ -926,10 +926,7 @@ func (of OperatorFactory) Name() string {
 func (of OperatorFactory) SeemsToMatch(devicebytes []byte, debug bool) bool {
 	// For now, just return true if we can run Catalog successfully.
 	_, err := readVolume(devicebytes, 2, debug)
-	if err != nil {
-		return false
-	}
-	return true
+	return err == nil
 }
 
 // Operator returns an Operator for the []byte disk image.

@@ -11,7 +11,7 @@ import (
 
 func randomBlock() disk.Block {
 	var b1 disk.Block
-	rand.Read(b1[:])
+	_, _ = rand.Read(b1[:])
 	return b1
 }
 
@@ -19,7 +19,10 @@ func randomBlock() disk.Block {
 func TestVolumeDirectoryKeyBlockMarshalRoundtrip(t *testing.T) {
 	b1 := randomBlock()
 	vdkb := &VolumeDirectoryKeyBlock{}
-	vdkb.FromBlock(b1)
+	err := vdkb.FromBlock(b1)
+	if err != nil {
+		t.Fatal(err)
+	}
 	b2, err := vdkb.ToBlock()
 	if err != nil {
 		t.Fatal(err)
@@ -28,7 +31,10 @@ func TestVolumeDirectoryKeyBlockMarshalRoundtrip(t *testing.T) {
 		t.Fatalf("Blocks differ: %s", strings.Join(pretty.Diff(b1[:], b2[:]), "; "))
 	}
 	vdkb2 := &VolumeDirectoryKeyBlock{}
-	vdkb2.FromBlock(b2)
+	err = vdkb2.FromBlock(b2)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if *vdkb != *vdkb2 {
 		t.Errorf("Structs differ: %v != %v", vdkb, vdkb2)
 	}
@@ -38,7 +44,10 @@ func TestVolumeDirectoryKeyBlockMarshalRoundtrip(t *testing.T) {
 func TestVolumeDirectoryBlockMarshalRoundtrip(t *testing.T) {
 	b1 := randomBlock()
 	vdb := &VolumeDirectoryBlock{}
-	vdb.FromBlock(b1)
+	err := vdb.FromBlock(b1)
+	if err != nil {
+		t.Fatal(err)
+	}
 	b2, err := vdb.ToBlock()
 	if err != nil {
 		t.Fatal(err)
@@ -47,7 +56,10 @@ func TestVolumeDirectoryBlockMarshalRoundtrip(t *testing.T) {
 		t.Fatalf("Blocks differ: %s", strings.Join(pretty.Diff(b1[:], b2[:]), "; "))
 	}
 	vdb2 := &VolumeDirectoryBlock{}
-	vdb2.FromBlock(b2)
+	err = vdb2.FromBlock(b2)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if *vdb != *vdb2 {
 		t.Errorf("Structs differ: %v != %v", vdb, vdb2)
 	}
@@ -57,7 +69,10 @@ func TestVolumeDirectoryBlockMarshalRoundtrip(t *testing.T) {
 func TestSubdirectoryKeyBlockMarshalRoundtrip(t *testing.T) {
 	b1 := randomBlock()
 	skb := &SubdirectoryKeyBlock{}
-	skb.FromBlock(b1)
+	err := skb.FromBlock(b1)
+	if err != nil {
+		t.Fatal(err)
+	}
 	b2, err := skb.ToBlock()
 	if err != nil {
 		t.Fatal(err)
@@ -66,7 +81,10 @@ func TestSubdirectoryKeyBlockMarshalRoundtrip(t *testing.T) {
 		t.Fatalf("Blocks differ: %s", strings.Join(pretty.Diff(b1[:], b2[:]), "; "))
 	}
 	skb2 := &SubdirectoryKeyBlock{}
-	skb2.FromBlock(b2)
+	err = skb2.FromBlock(b2)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if *skb != *skb2 {
 		t.Errorf("Structs differ: %v != %v", skb, skb2)
 	}
@@ -76,7 +94,10 @@ func TestSubdirectoryKeyBlockMarshalRoundtrip(t *testing.T) {
 func TestSubdirectoryBlockMarshalRoundtrip(t *testing.T) {
 	b1 := randomBlock()
 	sb := &SubdirectoryBlock{}
-	sb.FromBlock(b1)
+	err := sb.FromBlock(b1)
+	if err != nil {
+		t.Fatal(err)
+	}
 	b2, err := sb.ToBlock()
 	if err != nil {
 		t.Fatal(err)
@@ -85,7 +106,10 @@ func TestSubdirectoryBlockMarshalRoundtrip(t *testing.T) {
 		t.Fatalf("Blocks differ: %s", strings.Join(pretty.Diff(b1[:], b2[:]), "; "))
 	}
 	sb2 := &SubdirectoryBlock{}
-	sb2.FromBlock(b2)
+	err = sb2.FromBlock(b2)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if *sb != *sb2 {
 		t.Errorf("Structs differ: %v != %v", sb, sb2)
 	}

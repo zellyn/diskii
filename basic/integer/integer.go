@@ -186,6 +186,7 @@ func Decode(raw []byte) (Listing, error) {
 	return listing, nil
 }
 
+/*
 const (
 	tokenREM        = 0x5D
 	tokenUnaryPlus  = 0x35
@@ -193,6 +194,7 @@ const (
 	tokenQuoteStart = 0x28
 	tokenQuoteEnd   = 0x29
 )
+*/
 
 func isalnum(b byte) bool {
 	switch {

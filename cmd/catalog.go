@@ -12,11 +12,19 @@ import (
 
 type LsCmd struct {
 	Order  types.DiskOrder `kong:"default='auto',enum='auto,do,po',help='Logical-to-physical sector order.'"`
-	System string          `kong:"default='auto',enum='auto,dos3',help='DOS system used for image.'"`
+	System string          `kong:"default='auto',enum='auto,dos3,prodos,nakedos',help='DOS system used for image.'"`
 
 	ShortNames bool     `kong:"short='s',help='Whether to print short filenames (only makes a difference on Super-Mon disks).'"`
 	Image      *os.File `kong:"arg,required,help='Disk/device image to read.'"`
 	Directory  string   `kong:"arg,optional,help='Directory to list (ProDOS only).'"`
+}
+
+func (l LsCmd) Help() string {
+	return `Examples:
+	# Simple ls of a disk image
+	diskii ls games.dsk
+	# Get really explicit about disk order and system
+	diskii ls --order do --system nakedos Super-Mon-2.0.dsk`
 }
 
 func (l *LsCmd) Run(globals *types.Globals) error {

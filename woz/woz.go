@@ -129,8 +129,6 @@ func (d *decoder) parseChunk() (done bool, err error) {
 	default:
 		return false, d.parseUnknown(string(d.tmp[:4]), length)
 	}
-
-	return false, nil
 }
 
 func (d *decoder) parseINFO(length uint32) error {

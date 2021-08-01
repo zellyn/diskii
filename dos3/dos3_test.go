@@ -10,11 +10,14 @@ import (
 // TestVTOCMarshalRoundtrip checks a simple roundtrip of VTOC data.
 func TestVTOCMarshalRoundtrip(t *testing.T) {
 	buf := make([]byte, 256)
-	rand.Read(buf)
+	_, _ = rand.Read(buf)
 	buf1 := make([]byte, 256)
 	copy(buf1, buf)
 	vtoc1 := &VTOC{}
-	vtoc1.FromSector(buf1)
+	err := vtoc1.FromSector(buf1)
+	if err != nil {
+		t.Fatal(err)
+	}
 	buf2, err := vtoc1.ToSector()
 	if err != nil {
 		t.Fatal(err)
@@ -23,7 +26,10 @@ func TestVTOCMarshalRoundtrip(t *testing.T) {
 		t.Errorf("Buffers differ: %v != %v", buf, buf2)
 	}
 	vtoc2 := &VTOC{}
-	vtoc2.FromSector(buf2)
+	err = vtoc2.FromSector(buf2)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if *vtoc1 != *vtoc2 {
 		t.Errorf("Structs differ: %v != %v", vtoc1, vtoc2)
 	}
@@ -32,11 +38,14 @@ func TestVTOCMarshalRoundtrip(t *testing.T) {
 // TestCatalogSectorMarshalRoundtrip checks a simple roundtrip of CatalogSector data.
 func TestCatalogSectorMarshalRoundtrip(t *testing.T) {
 	buf := make([]byte, 256)
-	rand.Read(buf)
+	_, _ = rand.Read(buf)
 	buf1 := make([]byte, 256)
 	copy(buf1, buf)
 	cs1 := &CatalogSector{}
-	cs1.FromSector(buf1)
+	err := cs1.FromSector(buf1)
+	if err != nil {
+		t.Fatal(err)
+	}
 	buf2, err := cs1.ToSector()
 	if err != nil {
 		t.Fatal(err)
@@ -45,7 +54,10 @@ func TestCatalogSectorMarshalRoundtrip(t *testing.T) {
 		t.Errorf("Buffers differ: %v != %v", buf, buf2)
 	}
 	cs2 := &CatalogSector{}
-	cs2.FromSector(buf2)
+	err = cs2.FromSector(buf2)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if *cs1 != *cs2 {
 		t.Errorf("Structs differ: %v != %v", cs1, cs2)
 	}
@@ -54,11 +66,14 @@ func TestCatalogSectorMarshalRoundtrip(t *testing.T) {
 // TestTrackSectorListMarshalRoundtrip checks a simple roundtrip of TrackSectorList data.
 func TestTrackSectorListMarshalRoundtrip(t *testing.T) {
 	buf := make([]byte, 256)
-	rand.Read(buf)
+	_, _ = rand.Read(buf)
 	buf1 := make([]byte, 256)
 	copy(buf1, buf)
 	cs1 := &TrackSectorList{}
-	cs1.FromSector(buf1)
+	err := cs1.FromSector(buf1)
+	if err != nil {
+		t.Fatal(err)
+	}
 	buf2, err := cs1.ToSector()
 	if err != nil {
 		t.Fatal(err)
@@ -67,7 +82,10 @@ func TestTrackSectorListMarshalRoundtrip(t *testing.T) {
 		t.Errorf("Buffers differ: %v != %v", buf, buf2)
 	}
 	cs2 := &TrackSectorList{}
-	cs2.FromSector(buf2)
+	err = cs2.FromSector(buf2)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if *cs1 != *cs2 {
 		t.Errorf("Structs differ: %v != %v", cs1, cs2)
 	}

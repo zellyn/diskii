@@ -32,7 +32,7 @@ func (ds DiskSector) GetTrack() byte {
 }
 
 // SetTrack sets the track that a DiskSector was loaded from.
-func (ds DiskSector) SetTrack(track byte) {
+func (ds *DiskSector) SetTrack(track byte) {
 	ds.Track = track
 }
 
@@ -42,7 +42,7 @@ func (ds DiskSector) GetSector() byte {
 }
 
 // SetSector sets the sector that a DiskSector was loaded from.
-func (ds DiskSector) SetSector(sector byte) {
+func (ds *DiskSector) SetSector(sector byte) {
 	ds.Sector = sector
 }
 
@@ -695,10 +695,7 @@ func (of OperatorFactory) Name() string {
 func (of OperatorFactory) SeemsToMatch(diskbytes []byte, debug bool) bool {
 	// For now, just return true if we can run Catalog successfully.
 	_, _, err := ReadCatalog(diskbytes, debug)
-	if err != nil {
-		return false
-	}
-	return true
+	return err == nil
 }
 
 // Operator returns an Operator for the []byte disk image.

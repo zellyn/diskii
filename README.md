@@ -98,15 +98,16 @@ operations matrix is listed below. Anything that an actual user needs
 will be likely to get priority.
 
 - [ ] Make `put` accept load address for appropriate filetypes.
+- [ ] Fix `golint` errors
 - [ ] Implement `GetFile` for prodos
-- [x] Build per-platform binaries for Linux, MacOS, Windows.
-- [x] Implement `GetFile` for DOS 3.3
+- [ ] Implement `Delete` for Super-Mon
+- [ ] Implement `Delete` for DOS 3.3
+- [ ] Implement `Delete` for ProDOS
 - [ ] Add and implement the `-l` flag for `ls`
-- [x] Add `Delete` to the `disk.Operator` interface
-  - [ ] Implement it for Super-Mon
-  - [ ] Implement it for DOS 3.3
-- [ ] Add ProDOS support for all commands
-- [x] Make `filetypes` command use a tabwriter to write as a table
+- [ ] Make `OperatorFactory.SeemsToMatch` more sophisticated for ProDOS
+- [ ] Make `OperatorFactory.SeemsToMatch` more sophisticated for DOS 3.3
+- [ ] Make `OperatorFactory.SeemsToMatch` more sophisticated for NakedOS
+- [x] Build per-platform binaries for Linux, MacOS, Windows.
 
 # Related tools
 
