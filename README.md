@@ -28,11 +28,34 @@ diskii's major disadvantage is that it mostly doesn't exist yet.
 
 It rhymes with “whiskey”.
 
-Discussion/support is in
-[#apple2 on the retrocomputing Slack](https://retrocomputing.slack.com/messages/apple2/)
-(invites [here](https://retrocomputing.herokuapp.com)).
+Discussion/support is on the
+[apple2infinitum Slack](https://apple2infinitum.slack.com/)
+(invites [here](http://apple2.gs:3000/)).
 
-### Goals
+# Examples
+
+Get a listing of files on a DOS 3.3 disk image:
+```
+diskii ls dos33master.dsk
+```
+
+… or a ProDOS disk image:
+```
+diskii ls ProDOS_2_4_2.po
+```
+
+… or a Super-Mon disk image:
+```
+diskii ls Super-Mon-2.0.dsk 
+```
+
+Reorder the sectors in a disk image:
+```
+diskii reorder ProDOS_2_4_2.dsk ProDOS_2_4_2.po
+```
+
+
+# Goals
 
 Eventually, it aims to be a comprehensive disk image manipulation
 tool, but for now only some parts work.
@@ -47,8 +70,8 @@ Current disk operations supported:
 | ---------------- | -------- | ------ | ------------------ |
 | basic structures | ✓        | ✓      | ✓                  |
 | ls               | ✓        | ✓      | ✓                  |
-| dump             | ✓        | ✗      | ✓                  |
-| put              | ✗        | ✗      | ✓                  |
+| dump             | ✗        | ✗      | ✗                  |
+| put              | ✗        | ✗      | ✗                  |
 | dumptext         | ✗        | ✗      | ✗                  |
 | delete           | ✗        | ✗      | ✗                  |
 | rename           | ✗        | ✗      | ✗                  |
@@ -59,7 +82,7 @@ Current disk operations supported:
 | init             | ✗        | ✗      | ✗                  |
 | defrag           | ✗        | ✗      | ✗                  |
 
-### Installing/updating
+# Installing/updating
 Assuming you have Go installed, run `go get -u github.com/zellyn/diskii`
 
 You can also download automatically-built binaries from the
@@ -68,25 +91,24 @@ page](https://github.com/zellyn/diskii/releases/latest). If you
 need binaries for a different architecture, please send a pull
 request or open an issue.
 
-### Short-term TODOs/roadmap/easy ways to contribute
+# Short-term TODOs/roadmap/easy ways to contribute
 
 My rough TODO list (apart from anything marked (✗) in the disk
 operations matrix is listed below. Anything that an actual user needs
 will be likely to get priority.
 
+- [ ] Make `put` accept load address for appropriate filetypes.
+- [ ] Implement `GetFile` for prodos
 - [x] Build per-platform binaries for Linux, MacOS, Windows.
 - [x] Implement `GetFile` for DOS 3.3
 - [ ] Add and implement the `-l` flag for `ls`
 - [x] Add `Delete` to the `disk.Operator` interface
-  - [x] Implement it for Super-Mon
+  - [ ] Implement it for Super-Mon
   - [ ] Implement it for DOS 3.3
-- [ ] Make 13-sector DOS disks work
-- [ ] Read/write nybble formats
-- [ ] Read/write gzipped files
-- [ ] Add basic ProDOS structures
-- [ ] Add ProDOS support
+- [ ] Add ProDOS support for all commands
+- [x] Make `filetypes` command use a tabwriter to write as a table
 
-### Related tools
+# Related tools
 
 - http://a2ciderpress.com/ - the great grandaddy of them all. Windows only, unless you Wine
   - http://retrocomputingaustralia.com/rca-downloads/ Michael Mulhern's MacOS package of CiderPress
@@ -107,3 +129,48 @@ will be likely to get priority.
 - https://github.com/slotek/apple2-disk-util - ruby
 - https://github.com/slotek/dsk2nib - C
 - https://github.com/robmcmullen/atrcopy - dos3.3, python
+
+# Notes
+
+## Disk formats
+
+- `.do`
+- `.po`
+- `.dsk` - could be DO or PO. When in doubt, assume DO.
+
+| Physical Sectors | DOS 3.2 Logical | DOS 3.3 Logical | ProDOS/Pascal Logical | CP/M Logical |
+|------------------|-----------------|-----------------|-----------------------|------------- |
+|        0         |        0        |        0        |          0.0          |      0.0     |
+|        1         |        1        |        7        |          4.0          |      2.3     |
+|        2         |        2        |        E        |          0.1          |      1.2     |
+|        3         |        3        |        6        |          4.1          |      0.1     |
+|        4         |        4        |        D        |          1.0          |      3.0     |
+|        5         |        5        |        5        |          5.0          |      1.3     |
+|        6         |        6        |        C        |          1.1          |      0.2     |
+|        7         |        7        |        4        |          5.1          |      3.1     |
+|        8         |        8        |        B        |          2.0          |      2.0     |
+|        9         |        9        |        3        |          6.0          |      0.3     |
+|        A         |        A        |        A        |          2.1          |      3.2     |
+|        B         |        B        |        2        |          6.1          |      2.1     |
+|        C         |        C        |        9        |          3.0          |      1.0     |
+|        D         |                 |        1        |          7.0          |      3.3     |
+|        E         |                 |        8        |          3.1          |      2.2     |
+|        F         |                 |        F        |          7.1          |      1.1     |
+
+_Note: DOS 3.2 rearranged the physical sectors on disk to achieve interleaving._
+### RWTS - DOS
+
+Sector mapping:
+http://www.textfiles.com/apple/ANATOMY/rwts.s.txt and search for INTRLEAV
+
+Mapping from specified sector to physical sector:
+
+`00 0D 0B 09 07 05 03 01 0E 0C 0A 08 06 04 02 0F`
+
+So if you write to "T0S1" with DOS RWTS, it ends up in physical sector 0D.
+
+## Commandline examples for thinking about how it should work
+
+diskii ls dos33.dsk
+diskii --order=do ls dos33.dsk
+diskii --order=do --system=nakedos ls nakedos.dsk

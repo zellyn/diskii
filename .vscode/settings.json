@@ -1,0 +1,9 @@
+{
+    "filewatcher.commands": [
+        {
+            "match": "\\.go",
+            "cmd": "echo '${file} changed'",
+            "event": "onFileChange",
+        },
+    ]
+}

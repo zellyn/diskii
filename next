@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Quick little script to add failing commands to, so I know what I'm working on next.
+set -euo pipefail
+set -x
+# go run . nakedos mkhello supermon-audit-new.dsk DF02
+# go run . put -f supermon-audit-new.dsk DF02:FWORLD audit.o
