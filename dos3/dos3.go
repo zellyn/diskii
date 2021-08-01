@@ -671,6 +671,16 @@ func (o operator) PutFile(fileInfo types.FileInfo, overwrite bool) (existed bool
 	return false, fmt.Errorf("%s does not implement PutFile yet", operatorName)
 }
 
+// DiskOrder returns the Physical-to-Logical mapping order.
+func (o operator) DiskOrder() types.DiskOrder {
+	return types.DiskOrderDO
+}
+
+// GetBytes returns the disk image bytes, in logical order.
+func (o operator) GetBytes() []byte {
+	return o.data
+}
+
 // OperatorFactory is a types.OperatorFactory for DOS 3.3 disks.
 type OperatorFactory struct {
 }
@@ -682,13 +692,9 @@ func (of OperatorFactory) Name() string {
 
 // SeemsToMatch returns true if the []byte disk image seems to match the
 // system of this operator.
-func (of OperatorFactory) SeemsToMatch(rawbytes []byte, debug bool) bool {
+func (of OperatorFactory) SeemsToMatch(diskbytes []byte, debug bool) bool {
 	// For now, just return true if we can run Catalog successfully.
-	swizzled, err := of.swizzle(rawbytes)
-	if err != nil {
-		return false
-	}
-	_, _, err = ReadCatalog(swizzled, debug)
+	_, _, err := ReadCatalog(diskbytes, debug)
 	if err != nil {
 		return false
 	}
@@ -696,14 +702,11 @@ func (of OperatorFactory) SeemsToMatch(rawbytes []byte, debug bool) bool {
 }
 
 // Operator returns an Operator for the []byte disk image.
-func (of OperatorFactory) Operator(rawbytes []byte, debug bool) (types.Operator, error) {
-	swizzled, err := of.swizzle(rawbytes)
-	if err != nil {
-		return nil, err
-	}
-	return operator{data: swizzled, debug: debug}, nil
+func (of OperatorFactory) Operator(diskbytes []byte, debug bool) (types.Operator, error) {
+	return operator{data: diskbytes, debug: debug}, nil
 }
 
-func (of OperatorFactory) swizzle(rawbytes []byte) ([]byte, error) {
-	return disk.Swizzle(rawbytes, disk.Dos33PhysicalToLogicalSectorMap)
+// DiskOrder returns the Physical-to-Logical mapping order.
+func (of OperatorFactory) DiskOrder() types.DiskOrder {
+	return operator{}.DiskOrder()
 }

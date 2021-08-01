@@ -7,24 +7,81 @@ import (
 	"path"
 	"strings"
 
+	"github.com/zellyn/diskii/helpers"
 	"github.com/zellyn/diskii/types"
 )
 
-// OpenImage attempts to open an image on disk, using the provided ordering and system type.
-func OpenImage(file *os.File, order string, system string, globals *types.Globals) (types.Operator, string, error) {
+// OpenFilename attempts to open a disk or device image, using the provided ordering and system type.
+func OpenFilename(filename string, order types.DiskOrder, system string, operatorFactories []types.OperatorFactory, debug bool) (types.Operator, types.DiskOrder, error) {
+	if filename == "-" {
+		return OpenFile(os.Stdin, order, system, operatorFactories, debug)
+	}
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, "", err
+	}
+	return OpenFile(file, order, system, operatorFactories, debug)
+}
+
+// OpenImage attempts to open a disk or device image, using the provided ordering and system type.
+// OpenImage will close the file.
+func OpenFile(file *os.File, order types.DiskOrder, system string, operatorFactories []types.OperatorFactory, debug bool) (types.Operator, types.DiskOrder, error) {
 	bb, err := io.ReadAll(file)
 	if err != nil {
 		return nil, "", err
 	}
-	if len(bb) == FloppyDiskBytes {
-		return openDoOrPo(bb, order, system, globals, strings.ToLower(path.Ext(file.Name())))
+	if err := file.Close(); err != nil {
+		return nil, "", err
 	}
-	return nil, "", fmt.Errorf("OpenImage not implemented yet for non-disk-sized images")
+	return OpenImage(bb, file.Name(), order, system, operatorFactories, debug)
 }
 
-func openDoOrPo(diskbytes []byte, order string, system string, globals *types.Globals, ext string) (types.Operator, string, error) {
+// OpenImage attempts to open a disk or device image, using the provided ordering and system type.
+func OpenImage(filebytes []byte, filename string, order types.DiskOrder, system string, operatorFactories []types.OperatorFactory, debug bool) (types.Operator, types.DiskOrder, error) {
+	ext := strings.ToLower(path.Ext(filename))
+	size := len(filebytes)
+	if size == FloppyDiskBytes {
+		return openDoOrPo(filebytes, order, system, ext, operatorFactories, debug)
+	}
+	if size == FloppyDiskBytes13Sector {
+		return nil, "", fmt.Errorf("cannot open 13-sector disk images (yet)")
+	}
+
+	if ext == ".hdv" {
+		return openHDV(filebytes, order, system, operatorFactories, debug)
+	}
+	return nil, "", fmt.Errorf("can only open disk-sized images and .hdv files")
+}
+
+func openHDV(rawbytes []byte, order types.DiskOrder, system string, operatorFactories []types.OperatorFactory, debug bool) (types.Operator, types.DiskOrder, error) {
+	size := len(rawbytes)
+	if size%512 > 0 {
+		return nil, "", fmt.Errorf("can only open .hdv files that are a multiple of 512 bytes: %d %% 512 == %d", size, size%512)
+	}
+	if size/512 > 65536 {
+		return nil, "", fmt.Errorf("can only open .hdv up to size 32MiB (%d); got %d", 65536*512, size)
+	}
+	if order != "auto" && order != types.DiskOrderPO {
+		return nil, "", fmt.Errorf("cannot open .hdv file in %q order", order)
+	}
+	if system != "auto" && system != "prodos" {
+		return nil, "", fmt.Errorf("cannot open .hdv file with %q system", system)
+	}
+	for _, factory := range operatorFactories {
+		if factory.Name() == "prodos" {
+			op, err := factory.Operator(rawbytes, debug)
+			if err != nil {
+				return nil, "", err
+			}
+			return op, types.DiskOrderPO, nil
+		}
+	}
+	return nil, "", fmt.Errorf("unable to find prodos module to open .hdv file") // Should not happen.
+}
+
+func openDoOrPo(rawbytes []byte, order types.DiskOrder, system string, ext string, operatorFactories []types.OperatorFactory, debug bool) (types.Operator, types.DiskOrder, error) {
 	var factories []types.OperatorFactory
-	for _, factory := range globals.DiskOperatorFactories {
+	for _, factory := range operatorFactories {
 		if system == "auto" || system == factory.Name() {
 			factories = append(factories, factory)
 		}
@@ -32,18 +89,18 @@ func openDoOrPo(diskbytes []byte, order string, system string, globals *types.Gl
 	if len(factories) == 0 {
 		return nil, "", fmt.Errorf("cannot find disk system with name %q", system)
 	}
-	orders := []string{order}
+	orders := []types.DiskOrder{order}
 	switch order {
-	case "do", "po":
+	case types.DiskOrderDO, types.DiskOrderPO:
 		// nothing more
-	case "auto":
+	case types.DiskOrderAuto:
 		switch ext {
 		case ".po":
-			orders = []string{"po"}
+			orders = []types.DiskOrder{types.DiskOrderPO}
 		case ".do":
-			orders = []string{"do"}
+			orders = []types.DiskOrder{types.DiskOrderDO}
 		case ".dsk", "":
-			orders = []string{"do", "po"}
+			orders = []types.DiskOrder{types.DiskOrderDO, types.DiskOrderPO}
 		default:
 			return nil, "", fmt.Errorf("unknown disk image extension: %q", ext)
 		}
@@ -52,31 +109,36 @@ func openDoOrPo(diskbytes []byte, order string, system string, globals *types.Gl
 	}
 
 	for _, order := range orders {
-		swizzled, err := Swizzle(diskbytes, LogicalToPhysicalByName[order])
+		swizzled, err := Swizzle(rawbytes, LogicalToPhysicalByName[order])
 		if err != nil {
 			return nil, "", err
 		}
 		for _, factory := range factories {
+			diskbytes, err := Swizzle(swizzled, PhysicalToLogicalByName[factory.DiskOrder()])
+			if err != nil {
+				return nil, "", err
+			}
+
 			if len(orders) == 1 && system != "auto" {
-				if globals.Debug {
+				if debug {
 					fmt.Fprintf(os.Stderr, "Attempting to open with order=%s, system=%s.\n", order, factory.Name())
 				}
-				op, err := factory.Operator(swizzled, globals.Debug)
+				op, err := factory.Operator(diskbytes, debug)
 				if err != nil {
 					return nil, "", err
 				}
 				return op, order, nil
 			}
 
-			if globals.Debug {
+			if debug {
 				fmt.Fprintf(os.Stderr, "Testing whether order=%s, system=%s seems to match.\n", order, factory.Name())
 			}
-			if factory.SeemsToMatch(swizzled, globals.Debug) {
-				op, err := factory.Operator(swizzled, globals.Debug)
+			if factory.SeemsToMatch(diskbytes, debug) {
+				op, err := factory.Operator(diskbytes, debug)
 				if err == nil {
 					return op, order, nil
 				}
-				if globals.Debug {
+				if debug {
 					fmt.Fprintf(os.Stderr, "Got error opening with order=%s, system=%s: %v\n", order, factory.Name(), err)
 				}
 			}
@@ -139,4 +201,40 @@ func validateOrder(order []int) error {
 		seen[mapping] = true
 	}
 	return nil
+}
+
+// OrderFromFilename tries to guess the disk order from the filename, using the extension.
+func OrderFromFilename(filename string, defaultOrder types.DiskOrder) types.DiskOrder {
+	ext := strings.ToLower(path.Ext(filename))
+	switch ext {
+	case ".dsk", ".do":
+		return types.DiskOrderDO
+	case ".po":
+		return types.DiskOrderPO
+	default:
+		return defaultOrder
+	}
+}
+
+// WriteBack writes a disk image back out.
+func WriteBack(filename string, op types.Operator, diskFileOrder types.DiskOrder, overwrite bool) error {
+	logicalBytes := op.GetBytes()
+	// If it's not floppy-sized, we don't swizzle at all.
+	if len(logicalBytes) != FloppyDiskBytes {
+		return helpers.WriteOutput(filename, logicalBytes, overwrite)
+	}
+
+	// Go from logical sectors for the operator back to physical sectors.
+	physicalBytes, err := Swizzle(logicalBytes, LogicalToPhysicalByName[op.DiskOrder()])
+	if err != nil {
+		return err
+	}
+
+	// Go from physical sectors to the disk order (DO or PO)
+	diskBytes, err := Swizzle(physicalBytes, PhysicalToLogicalByName[diskFileOrder])
+	if err != nil {
+		return err
+	}
+
+	return helpers.WriteOutput(filename, diskBytes, overwrite)
 }

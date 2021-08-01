@@ -4,13 +4,16 @@
 // file formats.
 package disk
 
+import "github.com/zellyn/diskii/types"
+
 // Various DOS33 disk characteristics.
 const (
 	FloppyTracks  = 35
 	FloppySectors = 16 // Sectors per track
 	// FloppyDiskBytes is the number of bytes on a DOS 3.3 disk.
-	FloppyDiskBytes  = 143360              // 35 tracks * 16 sectors * 256 bytes
-	FloppyTrackBytes = 256 * FloppySectors // Bytes per track
+	FloppyDiskBytes         = 143360              // 35 tracks * 16 sectors * 256 bytes
+	FloppyTrackBytes        = 256 * FloppySectors // Bytes per track
+	FloppyDiskBytes13Sector = 35 * 13 * 256
 )
 
 // Dos33LogicalToPhysicalSectorMap maps logical sector numbers to physical ones.
@@ -43,16 +46,18 @@ var ProDosPhysicalToLogicalSectorMap = []int{
 
 // LogicalToPhysicalByName maps from "do" and "po" to the corresponding
 // logical-to-physical ordering.
-var LogicalToPhysicalByName map[string][]int = map[string][]int{
-	"do": Dos33LogicalToPhysicalSectorMap,
-	"po": ProDOSLogicalToPhysicalSectorMap,
+var LogicalToPhysicalByName map[types.DiskOrder][]int = map[types.DiskOrder][]int{
+	types.DiskOrderDO:  Dos33LogicalToPhysicalSectorMap,
+	types.DiskOrderPO:  ProDOSLogicalToPhysicalSectorMap,
+	types.DiskOrderRaw: {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F},
 }
 
 // PhysicalToLogicalByName maps from "do" and "po" to the corresponding
 // physical-to-logical ordering.
-var PhysicalToLogicalByName map[string][]int = map[string][]int{
-	"do": Dos33PhysicalToLogicalSectorMap,
-	"po": ProDosPhysicalToLogicalSectorMap,
+var PhysicalToLogicalByName map[types.DiskOrder][]int = map[types.DiskOrder][]int{
+	types.DiskOrderDO:  Dos33PhysicalToLogicalSectorMap,
+	types.DiskOrderPO:  ProDosPhysicalToLogicalSectorMap,
+	types.DiskOrderRaw: {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F},
 }
 
 // TrackSector is a pair of track/sector bytes.

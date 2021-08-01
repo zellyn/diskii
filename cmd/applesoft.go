@@ -3,87 +3,41 @@
 package cmd
 
 import (
-	"fmt"
 	"os"
 
-	"github.com/spf13/cobra"
 	"github.com/zellyn/diskii/basic"
 	"github.com/zellyn/diskii/basic/applesoft"
 	"github.com/zellyn/diskii/helpers"
+	"github.com/zellyn/diskii/types"
 )
 
-// applesoftCmd represents the applesoft command
-var applesoftCmd = &cobra.Command{
-	Use:   "applesoft",
-	Short: "work with applesoft programs",
-	Long: `diskii applesoft contains the subcommands useful for working
-	with Applesoft programs.`,
+type ApplesoftCmd struct {
+	Decode DecodeCmd `kong:"cmd,help='Convert a binary Applesoft program to a text LISTing.'"`
 }
 
-func init() {
-	RootCmd.AddCommand(applesoftCmd)
+type DecodeCmd struct {
+	Filename string `kong:"arg,default='-',type='existingfile',help='Binary Applesoft file to read, or “-” for stdin.'"`
 
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// applesoftCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// applesoftCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	Location uint16 `kong:"type='anybaseuint16',default='0x801',help='Starting program location in memory.'"`
+	Raw      bool   `kong:"short='r',help='Print raw control codes (no escaping)'"`
 }
 
-// ----- applesoft decode command -------------------------------------------
-
-var location uint16      // flag for starting location in memory
-var rawControlCodes bool // flag for whether to skip escaping control codes
-
-// decodeCmd represents the decode command
-var decodeCmd = &cobra.Command{
-	Use:   "decode filename",
-	Short: "convert a binary applesoft program to a LISTing",
-	Long: `
-decode converts a binary Applesoft program to a text LISTing.
-
-Examples:
-decode filename # read filename
-decode -        # read stdin`,
-	Run: func(cmd *cobra.Command, args []string) {
-		if err := runDecode(args); err != nil {
-			fmt.Fprintln(os.Stderr, err.Error())
-			os.Exit(-1)
-		}
-	},
+func (d DecodeCmd) Help() string {
+	return `Examples:
+	# Dump the contents of HELLO and then decode it.
+	diskii dump dos33master.dsk HELLO | diskii applesoft decode -`
 }
 
-func init() {
-	applesoftCmd.AddCommand(decodeCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// decodeCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	decodeCmd.Flags().Uint16VarP(&location, "location", "l", 0x801, "Starting program location in memory")
-	decodeCmd.Flags().BoolVarP(&rawControlCodes, "raw", "r", false, "Print raw control codes (no escaping)")
-}
-
-// runDecode performs the actual decode logic.
-func runDecode(args []string) error {
-	if len(args) != 1 {
-		return fmt.Errorf("decode expects one argument: the filename (or - for stdin)")
-	}
-	contents, err := helpers.FileContentsOrStdIn(args[0])
+func (d *DecodeCmd) Run(globals *types.Globals) error {
+	contents, err := helpers.FileContentsOrStdIn(d.Filename)
 	if err != nil {
 		return err
 	}
-	listing, err := applesoft.Decode(contents, location)
+	listing, err := applesoft.Decode(contents, d.Location)
 	if err != nil {
 		return err
 	}
-	if rawControlCodes {
+	if d.Raw {
 		os.Stdout.WriteString(listing.String())
 	} else {
 		os.Stdout.WriteString(basic.ChevronControlCodes(listing.String()))

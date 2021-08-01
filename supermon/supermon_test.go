@@ -52,9 +52,7 @@ func getOperator(filename string) (types.Operator, error) {
 	if err != nil {
 		return nil, err
 	}
-	op, _, err := disk.OpenImage(f, "do", "nakedos", &types.Globals{
-		DiskOperatorFactories: []types.OperatorFactory{OperatorFactory{}},
-	})
+	op, _, err := disk.OpenFile(f, "do", "nakedos", []types.OperatorFactory{OperatorFactory{}}, false)
 	if err != nil {
 		return nil, err
 	}

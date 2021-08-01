@@ -28,9 +28,32 @@ diskii's major disadvantage is that it mostly doesn't exist yet.
 
 It rhymes with “whiskey”.
 
-Discussion/support is in
-[#apple2 on the retrocomputing Slack](https://retrocomputing.slack.com/messages/apple2/)
-(invites [here](https://retrocomputing.herokuapp.com)).
+Discussion/support is on the
+[apple2infinitum Slack](https://apple2infinitum.slack.com/)
+(invites [here](http://apple2.gs:3000/)).
+
+# Examples
+
+Get a listing of files on a DOS 3.3 disk image:
+```
+diskii ls dos33master.dsk
+```
+
+… or a ProDOS disk image:
+```
+diskii ls ProDOS_2_4_2.po
+```
+
+… or a Super-Mon disk image:
+```
+diskii ls Super-Mon-2.0.dsk 
+```
+
+Reorder the sectors in a disk image:
+```
+diskii reorder ProDOS_2_4_2.dsk ProDOS_2_4_2.po
+```
+
 
 # Goals
 
@@ -74,14 +97,15 @@ My rough TODO list (apart from anything marked (✗) in the disk
 operations matrix is listed below. Anything that an actual user needs
 will be likely to get priority.
 
+- [ ] Make `put` accept load address for appropriate filetypes.
+- [ ] Implement `GetFile` for prodos
 - [x] Build per-platform binaries for Linux, MacOS, Windows.
 - [x] Implement `GetFile` for DOS 3.3
 - [ ] Add and implement the `-l` flag for `ls`
 - [x] Add `Delete` to the `disk.Operator` interface
   - [ ] Implement it for Super-Mon
   - [ ] Implement it for DOS 3.3
-- [x] Add basic ProDOS structures
-- [ ] Add ProDOS support
+- [ ] Add ProDOS support for all commands
 - [x] Make `filetypes` command use a tabwriter to write as a table
 
 # Related tools

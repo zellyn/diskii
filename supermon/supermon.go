@@ -640,35 +640,35 @@ func (st SymbolTable) FilesForCompoundName(filename string) (numFile byte, named
 	return numFile, namedFile, parts[1], nil
 }
 
-// operator is a disk.Operator - an interface for performing
+// Operator is a disk.Operator - an interface for performing
 // high-level operations on files and directories.
-type operator struct {
+type Operator struct {
 	data  []byte
 	SM    SectorMap
 	ST    SymbolTable
 	debug bool
 }
 
-var _ types.Operator = operator{}
+var _ types.Operator = Operator{}
 
 // operatorName is the keyword name for the operator that undestands
 // NakedOS/Super-Mon disks.
 const operatorName = "nakedos"
 
 // Name returns the name of the Operator.
-func (o operator) Name() string {
+func (o Operator) Name() string {
 	return operatorName
 }
 
 // HasSubdirs returns true if the underlying operating system on the
 // disk allows subdirectories.
-func (o operator) HasSubdirs() bool {
+func (o Operator) HasSubdirs() bool {
 	return false
 }
 
 // Catalog returns a catalog of disk entries. subdir should be empty
 // for operating systems that do not support subdirectories.
-func (o operator) Catalog(subdir string) ([]types.Descriptor, error) {
+func (o Operator) Catalog(subdir string) ([]types.Descriptor, error) {
 	var descs []types.Descriptor
 	sectorsByFile := o.SM.SectorsByFile()
 	for file := byte(1); file < FileReserved; file++ {
@@ -689,7 +689,7 @@ func (o operator) Catalog(subdir string) ([]types.Descriptor, error) {
 }
 
 // GetFile retrieves a file by name.
-func (o operator) GetFile(filename string) (types.FileInfo, error) {
+func (o Operator) GetFile(filename string) (types.FileInfo, error) {
 	file, err := o.ST.FileForName(filename)
 	if err != nil {
 		return types.FileInfo{}, err
@@ -720,7 +720,7 @@ func (o operator) GetFile(filename string) (types.FileInfo, error) {
 
 // Delete deletes a file by name. It returns true if the file was
 // deleted, false if it didn't exist.
-func (o operator) Delete(filename string) (bool, error) {
+func (o Operator) Delete(filename string) (bool, error) {
 	file, err := o.ST.FileForName(filename)
 	if err != nil {
 		return false, err
@@ -744,9 +744,9 @@ func (o operator) Delete(filename string) (bool, error) {
 // PutFile writes a file by name. If the file exists and overwrite
 // is false, it returns with an error. Otherwise it returns true if
 // an existing file was overwritten.
-func (o operator) PutFile(fileInfo types.FileInfo, overwrite bool) (existed bool, err error) {
+func (o Operator) PutFile(fileInfo types.FileInfo, overwrite bool) (existed bool, err error) {
 	if fileInfo.Descriptor.Type != types.FiletypeBinary {
-		return false, fmt.Errorf("%s: only binary file type supported", operatorName)
+		return false, fmt.Errorf("%s: only binary file type supported; got %q", operatorName, fileInfo.Descriptor.Type)
 	}
 	if fileInfo.Descriptor.Length != len(fileInfo.Data) {
 		return false, fmt.Errorf("mismatch between FileInfo.Descriptor.Length (%d) and actual length of FileInfo.Data field (%d)", fileInfo.Descriptor.Length, len(fileInfo.Data))
@@ -785,25 +785,14 @@ func (o operator) PutFile(fileInfo types.FileInfo, overwrite bool) (existed bool
 	return existed, nil
 }
 
-// XOperatorFactory is the factory that returns supermon operators
-// given disk images.
-func XOperatorFactory(diskbytes []byte) (types.Operator, error) {
-	sm, err := LoadSectorMap(diskbytes)
-	if err != nil {
-		return nil, err
-	}
-	if err := sm.Verify(); err != nil {
-		return nil, err
-	}
+// DiskOrder returns the Physical-to-Logical mapping order.
+func (o Operator) DiskOrder() types.DiskOrder {
+	return types.DiskOrderRaw
+}
 
-	op := operator{data: diskbytes, SM: sm}
-
-	st, err := sm.ReadSymbolTable(diskbytes)
-	if err == nil {
-		op.ST = st
-	}
-
-	return op, nil
+// GetBytes returns the disk image bytes, in logical order.
+func (o Operator) GetBytes() []byte {
+	return o.data
 }
 
 // OperatorFactory is a types.OperatorFactory for DOS 3.3 disks.
@@ -839,7 +828,7 @@ func (of OperatorFactory) Operator(diskbytes []byte, debug bool) (types.Operator
 		return nil, err
 	}
 
-	op := operator{data: diskbytes, SM: sm, debug: debug}
+	op := Operator{data: diskbytes, SM: sm, debug: debug}
 
 	st, err := sm.ReadSymbolTable(diskbytes)
 	if err == nil {
@@ -847,4 +836,9 @@ func (of OperatorFactory) Operator(diskbytes []byte, debug bool) (types.Operator
 	}
 
 	return op, nil
+}
+
+// DiskOrder returns the Physical-to-Logical mapping order.
+func (of OperatorFactory) DiskOrder() types.DiskOrder {
+	return Operator{}.DiskOrder()
 }

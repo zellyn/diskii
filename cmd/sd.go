@@ -4,68 +4,62 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	"os"
 
-	"github.com/spf13/cobra"
 	"github.com/zellyn/diskii/disk"
 	"github.com/zellyn/diskii/helpers"
+	"github.com/zellyn/diskii/types"
 )
 
-var sdAddress uint16 // flag for address to load at
-var sdStart uint16   // flag for address to start execution at
+type SDCmd struct {
+	Order types.DiskOrder `kong:"default='auto',enum='auto,do,po',help='Logical-to-physical sector order.'"`
 
-// mksdCmd represents the mksd command
-var mksdCmd = &cobra.Command{
-	Use:   "mksd",
-	Short: "create a Standard-Delivery disk image",
-	Long: `diskii mksd creates a "Standard Delivery" disk image containing a binary.
+	DiskImage string   `kong:"arg,required,type='path',help='Disk image to write.'"`
+	Binary    *os.File `kong:"arg,required,help='Binary file to write to the disk.'"`
+
+	Address uint16 `kong:"type='anybaseuint16',default='0x6000',help='Address to load the code at.'"`
+	Start   uint16 `kong:"type='anybaseuint16',default='0xFFFF',help='Address to jump to. Defaults to 0xFFFF, which means “same as address flag”'"`
+}
+
+func (s SDCmd) Help() string {
+	return `
 See https://github.com/peterferrie/standard-delivery for details.
 
 Examples:
-mksd test.dsk foo.o  # load and run foo.o at the default address, then jump to the start of the loaded code.
-mksd test.dsk foo.o --address 0x2000 --start 0x2100  # load foo.o at address 0x2000, then jump to 0x2100.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		if err := runMkSd(args); err != nil {
-			fmt.Fprintln(os.Stderr, err.Error())
-			os.Exit(-1)
-		}
-	},
+	# Load and run foo.o at the default address, then jump to the start of the loaded code.
+	diskii mksd test.dsk foo.o
+
+	# Load foo.o at address 0x2000, then jump to 0x2100.
+	diskii mksd test.dsk foo.o --address 0x2000 --start 0x2100`
 }
 
-func init() {
-	RootCmd.AddCommand(mksdCmd)
-	mksdCmd.Flags().Uint16VarP(&sdAddress, "address", "a", 0x6000, "memory location to load code at")
-	mksdCmd.Flags().Uint16VarP(&sdStart, "start", "s", 0x6000, "memory location to jump to")
-}
-
-// ----- mksd command -------------------------------------------------------
-
-// runMkSd performs the actual mksd logic.
-func runMkSd(args []string) error {
-	if len(args) != 2 {
-		return fmt.Errorf("usage: diskii mksd <disk image> <file-to-load>")
+func (s *SDCmd) Run(globals *types.Globals) error {
+	if s.Start == 0xFFFF {
+		s.Start = s.Address
 	}
-	contents, err := helpers.FileContentsOrStdIn(args[1])
+
+	contents, err := io.ReadAll(s.Binary)
 	if err != nil {
 		return err
 	}
-	if sdAddress%256 != 0 {
-		return fmt.Errorf("address %d (%04X) not on a page boundary", sdAddress, sdAddress)
+	if s.Address%256 != 0 {
+		return fmt.Errorf("address %d (%04X) not on a page boundary", s.Address, s.Address)
 	}
-	if sdStart < sdAddress {
-		return fmt.Errorf("start address %d (%04X) < load address %d (%04X)", sdStart, sdStart, sdAddress, sdAddress)
+	if s.Start < s.Address {
+		return fmt.Errorf("start address %d (%04X) < load address %d (%04X)", s.Start, s.Start, s.Address, s.Address)
 	}
 
-	if int(sdStart) >= int(sdAddress)+len(contents) {
-		end := int(sdAddress) + len(contents)
+	if int(s.Start) >= int(s.Address)+len(contents) {
+		end := int(s.Address) + len(contents)
 		return fmt.Errorf("start address %d (%04X) is beyond load address %d (%04X) + file length = %d (%04X)",
-			sdStart, sdStart, sdAddress, sdAddress, end, end)
+			s.Start, s.Start, s.Address, s.Address, end, end)
 	}
 
-	if int(sdStart)+len(contents) > 0xC000 {
-		end := int(sdStart) + len(contents)
+	if int(s.Start)+len(contents) > 0xC000 {
+		end := int(s.Start) + len(contents)
 		return fmt.Errorf("start address %d (%04X) + file length %d (%04X) = %d (%04X), but we can't load past page 0xBF00",
-			sdStart, sdStart, len(contents), len(contents), end, end)
+			s.Start, s.Start, len(contents), len(contents), end, end)
 	}
 
 	sectors := (len(contents) + 255) / 256
@@ -76,11 +70,11 @@ func runMkSd(args []string) error {
 		0xc8, 0xa5, 0x27, 0xf0, 0xdf, 0x8a, 0x4a, 0x4a, 0x4a, 0x4a, 0x09, 0xc0, 0x48, 0xa9, 0x5b,
 		0x48, 0x60, 0xe6, 0x41, 0x06, 0x40, 0x20, 0x37, 0x08, 0x18, 0x20, 0x3c, 0x08, 0xe6, 0x40,
 		0xa5, 0x40, 0x29, 0x03, 0x2a, 0x05, 0x2b, 0xa8, 0xb9, 0x80, 0xc0, 0xa9, 0x30, 0x4c, 0xa8,
-		0xfc, 0x4c, byte(sdStart), byte(sdStart >> 8),
+		0xfc, 0x4c, byte(s.Start), byte(s.Start >> 8),
 	}
 
 	if len(loader)+sectors+1 > 256 {
-		return fmt.Errorf("file %q is %d bytes long, max is %d", args[1], len(contents), (255-len(loader))*256)
+		return fmt.Errorf("file %q is %d bytes long, max is %d", s.Binary.Name(), len(contents), (255-len(loader))*256)
 	}
 
 	for len(contents)%256 != 0 {
@@ -102,7 +96,7 @@ func runMkSd(args []string) error {
 			}
 		}
 
-		address := int(sdAddress) + i
+		address := int(s.Address) + i
 		loader = append(loader, byte(address>>8))
 		if err := disk.WriteSector(diskbytes, track, sector, contents[i:i+256]); err != nil {
 			return err
@@ -118,17 +112,13 @@ func runMkSd(args []string) error {
 		return err
 	}
 
-	f, err := os.Create(args[0])
+	order := s.Order
+	if order == types.DiskOrderAuto {
+		order = disk.OrderFromFilename(s.DiskImage, types.DiskOrderDO)
+	}
+	rawBytes, err := disk.Swizzle(diskbytes, disk.PhysicalToLogicalByName[order])
 	if err != nil {
 		return err
 	}
-	return fmt.Errorf("write not implemented")
-	//_, err = sd.Write(f)
-	if err != nil {
-		return err
-	}
-	if err = f.Close(); err != nil {
-		return err
-	}
-	return nil
+	return helpers.WriteOutput(s.DiskImage, rawBytes, true)
 }

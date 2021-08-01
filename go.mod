@@ -3,8 +3,7 @@ module github.com/zellyn/diskii
 go 1.16
 
 require (
-	github.com/alecthomas/kong v0.2.17 // indirect
+	github.com/alecthomas/kong v0.2.17
 	github.com/kr/pretty v0.2.1
-	github.com/spf13/cobra v1.1.3
-	github.com/spf13/viper v1.8.1
+	github.com/rogpeppe/go-internal v1.8.0
 )

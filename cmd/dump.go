@@ -2,43 +2,40 @@
 
 package cmd
 
-/*
-// dumpCmd represents the dump command, used to dump the raw contents
-// of a file.
-var dumpCmd = &cobra.Command{
-	Use:   "dump",
-	Short: "dump the raw contents of a file",
-	Long: `Dump the raw contents of a file.
+import (
+	"os"
 
-dump disk-image.dsk HELLO
-`,
-	Run: func(cmd *cobra.Command, args []string) {
-		if err := runDump(args); err != nil {
-			fmt.Fprintln(os.Stderr, err.Error())
-			os.Exit(-1)
-		}
-	},
+	"github.com/zellyn/diskii/disk"
+	"github.com/zellyn/diskii/types"
+)
+
+type DumpCmd struct {
+	Order  types.DiskOrder `kong:"default='auto',enum='auto,do,po',help='Logical-to-physical sector order.'"`
+	System string          `kong:"default='auto',enum='auto,dos3',help='DOS system used for image.'"`
+
+	DiskImage string `kong:"arg,required,type='existingfile',help='Disk image to modify.'"`
+	Filename  string `kong:"arg,required,help='Filename to use on disk.'"`
 }
 
-func init() {
-	RootCmd.AddCommand(dumpCmd)
+func (d DumpCmd) Help() string {
+	return `Examples:
+	# Dump file GREMLINS on disk image games.dsk.
+	diskii dump games.dsk GREMLINS`
 }
 
-// runDump performs the actual dump logic.
-func runDump(args []string) error {
-	if len(args) != 2 {
-		return fmt.Errorf("dump expects a disk image filename, and a filename")
-	}
-	op, err := disk.Open(args[0])
+func (d *DumpCmd) Run(globals *types.Globals) error {
+	op, _, err := disk.OpenFilename(d.DiskImage, d.Order, d.System, globals.DiskOperatorFactories, globals.Debug)
 	if err != nil {
 		return err
 	}
-	file, err := op.GetFile(args[1])
+
+	file, err := op.GetFile(d.Filename)
 	if err != nil {
 		return err
 	}
-	// TODO(zellyn): allow writing to files
-	os.Stdout.Write(file.Data)
+	_, err = os.Stdout.Write(file.Data)
+	if err != nil {
+		return err
+	}
 	return nil
 }
-*/

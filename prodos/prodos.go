@@ -7,6 +7,7 @@ package prodos
 import (
 	"encoding/binary"
 	"fmt"
+	"os"
 
 	"github.com/zellyn/diskii/disk"
 	"github.com/zellyn/diskii/types"
@@ -611,11 +612,12 @@ func (sh SubdirectoryHeader) Name() string {
 // Volume is the in-memory representation of a device's volume
 // information.
 type Volume struct {
-	keyBlock       *VolumeDirectoryKeyBlock
-	blocks         []*VolumeDirectoryBlock
-	bitmap         *VolumeBitMap
-	subdirsByBlock map[uint16]*Subdirectory
-	subdirsByName  map[string]*Subdirectory
+	keyBlock          *VolumeDirectoryKeyBlock // The key block describing the entire volume
+	blocks            []*VolumeDirectoryBlock  // The blocks in the top-level volume
+	bitmap            *VolumeBitMap            // Bitmap of which blocks are free
+	subdirsByBlock    map[uint16]*Subdirectory // A mapping of block number to subdirectory object
+	subdirsByName     map[string]*Subdirectory // a mapping of string to subdirectory object
+	firstSubdirBlocks map[uint16]uint16        // A mapping of later dir/subdir blocks to the first one in the chain
 }
 
 // Subdirectory is the in-memory representation of a single
@@ -652,16 +654,20 @@ func (v Volume) subdirDescriptors() []FileDescriptor {
 
 // readVolume reads the entire volume and subdirectories from a device
 // into memory.
-func readVolume(devicebytes []byte, keyBlock uint16) (Volume, error) {
+func readVolume(devicebytes []byte, keyBlock uint16, debug bool) (Volume, error) {
 	v := Volume{
-		keyBlock:       &VolumeDirectoryKeyBlock{},
-		subdirsByBlock: make(map[uint16]*Subdirectory),
-		subdirsByName:  make(map[string]*Subdirectory),
+		keyBlock:          &VolumeDirectoryKeyBlock{},
+		subdirsByBlock:    make(map[uint16]*Subdirectory),
+		subdirsByName:     make(map[string]*Subdirectory),
+		firstSubdirBlocks: make(map[uint16]uint16),
 	}
 
 	if err := disk.UnmarshalBlock(devicebytes, v.keyBlock, keyBlock); err != nil {
 		return v, fmt.Errorf("cannot read first block of volume directory (block %d): %v", keyBlock, err)
 	}
+	// if debug {
+	// 	fmt.Fprintf(os.Stderr, "keyblock: %#v\n", v.keyBlock)
+	// }
 
 	if vbm, err := readVolumeBitMap(devicebytes, v.keyBlock.Header.BitMapPointer); err != nil {
 		return v, err
@@ -669,15 +675,29 @@ func readVolume(devicebytes []byte, keyBlock uint16) (Volume, error) {
 		v.bitmap = &vbm
 	}
 
+	// if debug {
+	// 	fmt.Fprintf(os.Stderr, "volume bitmap: %#v\n", v.bitmap)
+	// }
+
 	for block := v.keyBlock.Next; block != 0; block = v.blocks[len(v.blocks)-1].Next {
 		vdb := VolumeDirectoryBlock{}
 		if err := disk.UnmarshalBlock(devicebytes, &vdb, block); err != nil {
 			return v, err
 		}
 		v.blocks = append(v.blocks, &vdb)
+		v.firstSubdirBlocks[block] = keyBlock
+		if debug {
+			fmt.Fprintf(os.Stderr, "  firstSubdirBlocks[%d] → %d\n", block, keyBlock)
+		}
+		// if debug {
+		// 	fmt.Fprintf(os.Stderr, "block: %#v\n", vdb)
+		// }
 	}
 
 	sdds := v.subdirDescriptors()
+	if debug {
+		fmt.Fprintf(os.Stderr, "got %d top-level subdir descriptors\n", len(sdds))
+	}
 
 	for i := 0; i < len(sdds); i++ {
 		sdd := sdds[i]
@@ -686,12 +706,27 @@ func readVolume(devicebytes []byte, keyBlock uint16) (Volume, error) {
 			return v, err
 		}
 		v.subdirsByBlock[sdd.KeyPointer] = &sub
+		if debug {
+			fmt.Fprintf(os.Stderr, " subdirsByBlock[%d] → %q\n", sdd.KeyPointer, sub.keyBlock.Header.Name())
+		}
 		sdds = append(sdds, sub.subdirDescriptors()...)
+		for _, block := range sub.blocks {
+			v.firstSubdirBlocks[block.block] = sdd.KeyPointer
+			if debug {
+				fmt.Fprintf(os.Stderr, "  firstSubdirBlocks[%d] → %d\n", block.block, sdd.KeyPointer)
+			}
+		}
+	}
+	if debug {
+		fmt.Fprintf(os.Stderr, "got %d total subdir descriptors\n", len(sdds))
 	}
 
 	for _, sd := range v.subdirsByBlock {
 		name := sd.keyBlock.Header.Name()
-		parentName, err := parentDirName(sd.keyBlock.Header.ParentPointer, keyBlock, v.subdirsByBlock)
+		if debug {
+			fmt.Fprintf(os.Stderr, "processing subdir %q\n", name)
+		}
+		parentName, err := parentDirName(sd.keyBlock.Header.ParentPointer, keyBlock, v.subdirsByBlock, v.firstSubdirBlocks)
 		if err != nil {
 			return v, err
 		}
@@ -700,6 +735,9 @@ func readVolume(devicebytes []byte, keyBlock uint16) (Volume, error) {
 		}
 
 		v.subdirsByName[name] = sd
+	}
+	if debug {
+		fmt.Fprintf(os.Stderr, "HERE2\n")
 	}
 	return v, nil
 }
@@ -729,16 +767,23 @@ func (s Subdirectory) subdirDescriptors() []FileDescriptor {
 	return descs
 }
 
-// fullDirName returns the full recursive directory name of the given parent directory.
-func parentDirName(parentDirectoryBlock uint16, keyBlock uint16, subdirMap map[uint16]*Subdirectory) (string, error) {
-	if parentDirectoryBlock == keyBlock {
+// parentDirName returns the full recursive directory name of the given parent directory.
+func parentDirName(parentDirectoryBlock uint16, keyBlock uint16, subdirMap map[uint16]*Subdirectory, firstSubdirBlockMap map[uint16]uint16) (string, error) {
+	if parentDirectoryBlock == keyBlock || firstSubdirBlockMap[parentDirectoryBlock] == keyBlock {
 		return "", nil
 	}
 	sd := subdirMap[parentDirectoryBlock]
 	if sd == nil {
+		parentFirstBlock, ok := firstSubdirBlockMap[parentDirectoryBlock]
+		if ok {
+			sd = subdirMap[parentFirstBlock]
+		}
+	}
+	if sd == nil {
 		return "", fmt.Errorf("Unable to find subdirectory for block %d", parentDirectoryBlock)
 	}
-	parentName, err := parentDirName(sd.keyBlock.Header.ParentPointer, keyBlock, subdirMap)
+
+	parentName, err := parentDirName(sd.keyBlock.Header.ParentPointer, keyBlock, subdirMap, firstSubdirBlockMap)
 	if err != nil {
 		return "", err
 	}
@@ -807,10 +852,12 @@ func (o operator) HasSubdirs() bool {
 // Catalog returns a catalog of disk entries. subdir should be empty
 // for operating systems that do not support subdirectories.
 func (o operator) Catalog(subdir string) ([]types.Descriptor, error) {
-
-	vol, err := readVolume(o.data, 2)
+	if o.debug {
+		fmt.Fprintf(os.Stderr, "Catalog of %q\n", subdir)
+	}
+	vol, err := readVolume(o.data, 2, o.debug)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error reading volume: %w", err)
 	}
 
 	var result []types.Descriptor
@@ -855,6 +902,16 @@ func (o operator) PutFile(fileInfo types.FileInfo, overwrite bool) (existed bool
 	return false, fmt.Errorf("%s doesn't implement PutFile yet", operatorName)
 }
 
+// DiskOrder returns the Physical-to-Logical mapping order.
+func (o operator) DiskOrder() types.DiskOrder {
+	return types.DiskOrderPO
+}
+
+// GetBytes returns the disk image bytes, in logical order.
+func (o operator) GetBytes() []byte {
+	return o.data
+}
+
 // OperatorFactory is a types.OperatorFactory for ProDos disks.
 type OperatorFactory struct {
 }
@@ -868,14 +925,7 @@ func (of OperatorFactory) Name() string {
 // system of this operator.
 func (of OperatorFactory) SeemsToMatch(devicebytes []byte, debug bool) bool {
 	// For now, just return true if we can run Catalog successfully.
-	if len(devicebytes) == disk.FloppyDiskBytes {
-		swizzled, err := of.swizzle(devicebytes)
-		if err != nil {
-			return false
-		}
-		devicebytes = swizzled
-	}
-	_, err := readVolume(devicebytes, 2)
+	_, err := readVolume(devicebytes, 2, debug)
 	if err != nil {
 		return false
 	}
@@ -884,16 +934,10 @@ func (of OperatorFactory) SeemsToMatch(devicebytes []byte, debug bool) bool {
 
 // Operator returns an Operator for the []byte disk image.
 func (of OperatorFactory) Operator(devicebytes []byte, debug bool) (types.Operator, error) {
-	if len(devicebytes) == disk.FloppyDiskBytes {
-		swizzled, err := of.swizzle(devicebytes)
-		if err != nil {
-			return nil, err
-		}
-		devicebytes = swizzled
-	}
 	return operator{data: devicebytes, debug: debug}, nil
 }
 
-func (of OperatorFactory) swizzle(rawbytes []byte) ([]byte, error) {
-	return disk.Swizzle(rawbytes, disk.ProDosPhysicalToLogicalSectorMap)
+// DiskOrder returns the Physical-to-Logical mapping order.
+func (of OperatorFactory) DiskOrder() types.DiskOrder {
+	return operator{}.DiskOrder()
 }

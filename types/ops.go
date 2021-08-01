@@ -17,11 +17,23 @@ type Descriptor struct {
 	Type     Filetype
 }
 
+type DiskOrder string
+
+const (
+	DiskOrderDO      = DiskOrder("do")
+	DiskOrderPO      = DiskOrder("po")
+	DiskOrderRaw     = DiskOrder("raw")
+	DiskOrderAuto    = DiskOrder("auto")
+	DiskOrderUnknown = DiskOrder("")
+)
+
 // OperatorFactory is the interface for getting operators, and finding out a bit
 // about them before getting them.
 type OperatorFactory interface {
 	// Name returns the name of the operator.
 	Name() string
+	// DiskOrder returns the Physical-to-Logical mapping order.
+	DiskOrder() DiskOrder
 	// SeemsToMatch returns true if the []byte disk image seems to match the
 	// system of this operator.
 	SeemsToMatch(diskbytes []byte, debug bool) bool
@@ -33,6 +45,8 @@ type OperatorFactory interface {
 type Operator interface {
 	// Name returns the name of the operator.
 	Name() string
+	// DiskOrder returns the Physical-to-Logical mapping order.
+	DiskOrder() DiskOrder
 	// HasSubdirs returns true if the underlying operating system on the
 	// disk allows subdirectories.
 	HasSubdirs() bool
@@ -48,6 +62,8 @@ type Operator interface {
 	// is false, it returns with an error. Otherwise it returns true if
 	// an existing file was overwritten.
 	PutFile(fileInfo FileInfo, overwrite bool) (existed bool, err error)
+	// GetBytes returns the disk image bytes, in logical order.
+	GetBytes() []byte
 }
 
 // FileInfo represents a file descriptor plus the content.

@@ -11,8 +11,8 @@ import (
 )
 
 type LsCmd struct {
-	Order  string `kong:"default='auto',enum='auto,do,po',help='Logical-to-physical sector order.'"`
-	System string `kong:"default='auto',enum='auto,dos3',help='DOS system used for image.'"`
+	Order  types.DiskOrder `kong:"default='auto',enum='auto,do,po',help='Logical-to-physical sector order.'"`
+	System string          `kong:"default='auto',enum='auto,dos3',help='DOS system used for image.'"`
 
 	ShortNames bool     `kong:"short='s',help='Whether to print short filenames (only makes a difference on Super-Mon disks).'"`
 	Image      *os.File `kong:"arg,required,help='Disk/device image to read.'"`
@@ -20,7 +20,7 @@ type LsCmd struct {
 }
 
 func (l *LsCmd) Run(globals *types.Globals) error {
-	op, order, err := disk.OpenImage(l.Image, l.Order, l.System, globals)
+	op, order, err := disk.OpenFile(l.Image, l.Order, l.System, globals.DiskOperatorFactories, globals.Debug)
 	if err != nil {
 		return fmt.Errorf("%w: %s", err, l.Image.Name())
 	}

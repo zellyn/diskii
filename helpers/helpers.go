@@ -1,7 +1,7 @@
 // Copyright © 2016 Zellyn Hunter <zellyn@gmail.com>
 
-// Package helpers contains various routines used to help cobra
-// commands stay succinct.
+// Package helpers contains helper routines for reading and writing files,
+// allowing `-` to mean stdin/stdout.
 package helpers
 
 import (
@@ -21,18 +21,15 @@ func FileContentsOrStdIn(s string) ([]byte, error) {
 	return os.ReadFile(s)
 }
 
-func WriteOutput(outfilename string, contents []byte, infilename string, force bool) error {
-	if outfilename == "" {
-		outfilename = infilename
-	}
-	if outfilename == "-" {
+func WriteOutput(filename string, contents []byte, force bool) error {
+	if filename == "-" {
 		_, err := os.Stdout.Write(contents)
 		return err
 	}
 	if !force {
-		if _, err := os.Stat(outfilename); !errors.Is(err, fs.ErrNotExist) {
-			return fmt.Errorf("cannot overwrite file %q without --force (-f)", outfilename)
+		if _, err := os.Stat(filename); !errors.Is(err, fs.ErrNotExist) {
+			return fmt.Errorf("cannot overwrite file %q without --force (-f)", filename)
 		}
 	}
-	return os.WriteFile(outfilename, contents, 0666)
+	return os.WriteFile(filename, contents, 0666)
 }
