@@ -31,7 +31,7 @@ func (d DecodeCmd) Help() string {
 	diskii dump dos33master.dsk HELLO | diskii applesoft decode -`
 }
 
-// Run the decode command.
+// Run the `decode` command.
 func (d *DecodeCmd) Run(globals *types.Globals) error {
 	contents, err := helpers.FileContentsOrStdIn(d.Filename)
 	if err != nil {

@@ -1,7 +1,7 @@
 // Package data is a bunch of go:embed embedded files.
 package data
 
-import _ "embed"
+import _ "embed" // Mark this file as using embeds.
 
 // DOS33masterDSK is a DOS 3.3 Master Disk image.
 //go:embed disks/dos33master.dsk
