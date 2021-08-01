@@ -13,7 +13,7 @@ import (
 )
 
 // OpenFilename attempts to open a disk or device image, using the provided ordering and system type.
-func OpenFilename(filename string, order types.DiskOrder, system string, operatorFactories []types.OperatorFactory, debug bool) (types.Operator, types.DiskOrder, error) {
+func OpenFilename(filename string, order types.DiskOrder, system string, operatorFactories []types.OperatorFactory, debug int) (types.Operator, types.DiskOrder, error) {
 	if filename == "-" {
 		return OpenFile(os.Stdin, order, system, operatorFactories, debug)
 	}
@@ -26,7 +26,7 @@ func OpenFilename(filename string, order types.DiskOrder, system string, operato
 
 // OpenFile attempts to open a disk or device image, using the provided ordering and system type.
 // OpenFile will close the file.
-func OpenFile(file *os.File, order types.DiskOrder, system string, operatorFactories []types.OperatorFactory, debug bool) (types.Operator, types.DiskOrder, error) {
+func OpenFile(file *os.File, order types.DiskOrder, system string, operatorFactories []types.OperatorFactory, debug int) (types.Operator, types.DiskOrder, error) {
 	bb, err := io.ReadAll(file)
 	if err != nil {
 		return nil, "", err
@@ -38,7 +38,7 @@ func OpenFile(file *os.File, order types.DiskOrder, system string, operatorFacto
 }
 
 // OpenImage attempts to open a disk or device image, using the provided ordering and system type.
-func OpenImage(filebytes []byte, filename string, order types.DiskOrder, system string, operatorFactories []types.OperatorFactory, debug bool) (types.Operator, types.DiskOrder, error) {
+func OpenImage(filebytes []byte, filename string, order types.DiskOrder, system string, operatorFactories []types.OperatorFactory, debug int) (types.Operator, types.DiskOrder, error) {
 	ext := strings.ToLower(path.Ext(filename))
 	size := len(filebytes)
 	if size == FloppyDiskBytes {
@@ -54,7 +54,7 @@ func OpenImage(filebytes []byte, filename string, order types.DiskOrder, system 
 	return nil, "", fmt.Errorf("can only open disk-sized images and .hdv files")
 }
 
-func openHDV(rawbytes []byte, order types.DiskOrder, system string, operatorFactories []types.OperatorFactory, debug bool) (types.Operator, types.DiskOrder, error) {
+func openHDV(rawbytes []byte, order types.DiskOrder, system string, operatorFactories []types.OperatorFactory, debug int) (types.Operator, types.DiskOrder, error) {
 	size := len(rawbytes)
 	if size%512 > 0 {
 		return nil, "", fmt.Errorf("can only open .hdv files that are a multiple of 512 bytes: %d %% 512 == %d", size, size%512)
@@ -80,7 +80,7 @@ func openHDV(rawbytes []byte, order types.DiskOrder, system string, operatorFact
 	return nil, "", fmt.Errorf("unable to find prodos module to open .hdv file") // Should not happen.
 }
 
-func openDoOrPo(rawbytes []byte, order types.DiskOrder, system string, ext string, operatorFactories []types.OperatorFactory, debug bool) (types.Operator, types.DiskOrder, error) {
+func openDoOrPo(rawbytes []byte, order types.DiskOrder, system string, ext string, operatorFactories []types.OperatorFactory, debug int) (types.Operator, types.DiskOrder, error) {
 	var factories []types.OperatorFactory
 	for _, factory := range operatorFactories {
 		if system == "auto" || system == factory.Name() {
@@ -121,7 +121,7 @@ func openDoOrPo(rawbytes []byte, order types.DiskOrder, system string, ext strin
 			}
 
 			if len(orders) == 1 && system != "auto" {
-				if debug {
+				if debug > 1 {
 					fmt.Fprintf(os.Stderr, "Attempting to open with order=%s, system=%s.\n", order, factory.Name())
 				}
 				op, err := factory.Operator(diskbytes, debug)
@@ -131,7 +131,7 @@ func openDoOrPo(rawbytes []byte, order types.DiskOrder, system string, ext strin
 				return op, order, nil
 			}
 
-			if debug {
+			if debug > 1 {
 				fmt.Fprintf(os.Stderr, "Testing whether order=%s, system=%s seems to match.\n", order, factory.Name())
 			}
 			if factory.SeemsToMatch(diskbytes, debug) {
@@ -139,7 +139,7 @@ func openDoOrPo(rawbytes []byte, order types.DiskOrder, system string, ext strin
 				if err == nil {
 					return op, order, nil
 				}
-				if debug {
+				if debug > 1 {
 					fmt.Fprintf(os.Stderr, "Got error opening with order=%s, system=%s: %v\n", order, factory.Name(), err)
 				}
 			}

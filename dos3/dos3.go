@@ -490,7 +490,7 @@ func (tsl *TrackSectorList) FromSector(data []byte) error {
 
 // readCatalogSectors reads the raw CatalogSector structs from a DOS
 // 3.3 disk.
-func readCatalogSectors(diskbytes []byte, debug bool) ([]CatalogSector, error) {
+func readCatalogSectors(diskbytes []byte, debug int) ([]CatalogSector, error) {
 	v := &VTOC{}
 	err := disk.UnmarshalLogicalSector(diskbytes, v, VTOCTrack, VTOCSector)
 	if err != nil {
@@ -528,7 +528,7 @@ func readCatalogSectors(diskbytes []byte, debug bool) ([]CatalogSector, error) {
 }
 
 // ReadCatalog reads the catalog of a DOS 3.3 disk.
-func ReadCatalog(diskbytes []byte, debug bool) (files, deleted []FileDesc, err error) {
+func ReadCatalog(diskbytes []byte, debug int) (files, deleted []FileDesc, err error) {
 	css, err := readCatalogSectors(diskbytes, debug)
 	if err != nil {
 		return nil, nil, err
@@ -553,7 +553,7 @@ func ReadCatalog(diskbytes []byte, debug bool) (files, deleted []FileDesc, err e
 // high-level operations on files and directories.
 type operator struct {
 	data  []byte
-	debug bool
+	debug int
 }
 
 var _ types.Operator = operator{}
@@ -692,14 +692,14 @@ func (of OperatorFactory) Name() string {
 
 // SeemsToMatch returns true if the []byte disk image seems to match the
 // system of this operator.
-func (of OperatorFactory) SeemsToMatch(diskbytes []byte, debug bool) bool {
+func (of OperatorFactory) SeemsToMatch(diskbytes []byte, debug int) bool {
 	// For now, just return true if we can run Catalog successfully.
 	_, _, err := ReadCatalog(diskbytes, debug)
 	return err == nil
 }
 
 // Operator returns an Operator for the []byte disk image.
-func (of OperatorFactory) Operator(diskbytes []byte, debug bool) (types.Operator, error) {
+func (of OperatorFactory) Operator(diskbytes []byte, debug int) (types.Operator, error) {
 	return operator{data: diskbytes, debug: debug}, nil
 }
 

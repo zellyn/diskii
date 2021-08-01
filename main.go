@@ -19,7 +19,7 @@ import (
 )
 
 var cli struct {
-	Debug bool `kong:"short='v',help='Enable debug mode.'"`
+	Debug int `kong:"short='v',type='counter',help='Enable debug mode.'"`
 
 	Ls        cmd.LsCmd        `cmd:"" aliases:"list,cat,catalog" help:"List files/directories on a disk."`
 	Reorder   cmd.ReorderCmd   `cmd:"" help:"Convert between DOS-order and ProDOS-order disk images."`

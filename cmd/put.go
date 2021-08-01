@@ -16,6 +16,7 @@ type PutCmd struct {
 	System       string          `kong:"default='auto',enum='auto,dos3',help='DOS system used for image.'"`
 	FiletypeName string          `kong:"default='B',help='Type of file (“diskii filetypes” to list).'"`
 	Overwrite    bool            `kong:"short='f',help='Overwrite existing file?'"`
+	Address      uint16          `kong:"type='anybaseuint16',default='0x6000',help='For filetypes where it is appropriate, address to load the code at.'"`
 
 	DiskImage      string `kong:"arg,required,type='existingfile',help='Disk image to modify.'"`
 	TargetFilename string `kong:"arg,required,help='Filename to use on disk.'"`
@@ -56,7 +57,8 @@ func (p *PutCmd) Run(globals *types.Globals) error {
 			Length: len(contents),
 			Type:   filetype,
 		},
-		Data: contents,
+		Data:         contents,
+		StartAddress: p.Address,
 	}
 	_, err = op.PutFile(fileInfo, p.Overwrite)
 	if err != nil {

@@ -42,9 +42,9 @@ type OperatorFactory interface {
 	DiskOrder() DiskOrder
 	// SeemsToMatch returns true if the []byte disk image seems to match the
 	// system of this operator.
-	SeemsToMatch(diskbytes []byte, debug bool) bool
+	SeemsToMatch(diskbytes []byte, debug int) bool
 	// Operator returns an Operator for the []byte disk image.
-	Operator(diskbytes []byte, debug bool) (Operator, error)
+	Operator(diskbytes []byte, debug int) (Operator, error)
 }
 
 // Operator is the interface that can operate on disks.

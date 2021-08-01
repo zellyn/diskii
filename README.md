@@ -97,9 +97,10 @@ My rough TODO list (apart from anything marked (✗) in the disk
 operations matrix is listed below. Anything that an actual user needs
 will be likely to get priority.
 
-- [ ] Make `put` accept load address for appropriate filetypes.
-- [ ] Fix `golint` errors
+- [x] Make `put` accept load address for appropriate filetypes.
+- [x] Fix `golint` errors
 - [ ] Implement `GetFile` for prodos
+- [ ] Implement `PutFile` for prodos
 - [ ] Implement `Delete` for Super-Mon
 - [ ] Implement `Delete` for DOS 3.3
 - [ ] Implement `Delete` for ProDOS

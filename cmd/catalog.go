@@ -35,7 +35,7 @@ func (l *LsCmd) Run(globals *types.Globals) error {
 	if err != nil {
 		return fmt.Errorf("%w: %s", err, l.Image.Name())
 	}
-	if globals.Debug {
+	if globals.Debug > 0 {
 		fmt.Fprintf(os.Stderr, "Opened disk with order %q, system %q\n", order, op.Name())
 	}
 

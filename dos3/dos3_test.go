@@ -97,7 +97,7 @@ func TestReadCatalog(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	fds, deleted, err := ReadCatalog(diskbytes, false)
+	fds, deleted, err := ReadCatalog(diskbytes, 0)
 	if err != nil {
 		t.Fatal(err)
 	}

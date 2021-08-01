@@ -666,7 +666,7 @@ func (v Volume) subdirDescriptors() []FileDescriptor {
 
 // readVolume reads the entire volume and subdirectories from a device
 // into memory.
-func readVolume(devicebytes []byte, keyBlock uint16, debug bool) (Volume, error) {
+func readVolume(devicebytes []byte, keyBlock uint16, debug int) (Volume, error) {
 	v := Volume{
 		keyBlock:          &VolumeDirectoryKeyBlock{},
 		subdirsByBlock:    make(map[uint16]*Subdirectory),
@@ -699,7 +699,7 @@ func readVolume(devicebytes []byte, keyBlock uint16, debug bool) (Volume, error)
 		}
 		v.blocks = append(v.blocks, &vdb)
 		v.firstSubdirBlocks[block] = keyBlock
-		if debug {
+		if debug > 1 {
 			fmt.Fprintf(os.Stderr, "  firstSubdirBlocks[%d] → %d\n", block, keyBlock)
 		}
 		// if debug {
@@ -708,7 +708,7 @@ func readVolume(devicebytes []byte, keyBlock uint16, debug bool) (Volume, error)
 	}
 
 	sdds := v.subdirDescriptors()
-	if debug {
+	if debug > 1 {
 		fmt.Fprintf(os.Stderr, "got %d top-level subdir descriptors\n", len(sdds))
 	}
 
@@ -719,24 +719,24 @@ func readVolume(devicebytes []byte, keyBlock uint16, debug bool) (Volume, error)
 			return v, err
 		}
 		v.subdirsByBlock[sdd.KeyPointer] = &sub
-		if debug {
+		if debug > 1 {
 			fmt.Fprintf(os.Stderr, " subdirsByBlock[%d] → %q\n", sdd.KeyPointer, sub.keyBlock.Header.Name())
 		}
 		sdds = append(sdds, sub.subdirDescriptors()...)
 		for _, block := range sub.blocks {
 			v.firstSubdirBlocks[block.block] = sdd.KeyPointer
-			if debug {
+			if debug > 1 {
 				fmt.Fprintf(os.Stderr, "  firstSubdirBlocks[%d] → %d\n", block.block, sdd.KeyPointer)
 			}
 		}
 	}
-	if debug {
+	if debug > 1 {
 		fmt.Fprintf(os.Stderr, "got %d total subdir descriptors\n", len(sdds))
 	}
 
 	for _, sd := range v.subdirsByBlock {
 		name := sd.keyBlock.Header.Name()
-		if debug {
+		if debug > 1 {
 			fmt.Fprintf(os.Stderr, "processing subdir %q\n", name)
 		}
 		parentName, err := parentDirName(sd.keyBlock.Header.ParentPointer, keyBlock, v.subdirsByBlock, v.firstSubdirBlocks)
@@ -749,8 +749,11 @@ func readVolume(devicebytes []byte, keyBlock uint16, debug bool) (Volume, error)
 
 		v.subdirsByName[name] = sd
 	}
-	if debug {
-		fmt.Fprintf(os.Stderr, "HERE2\n")
+	if debug > 1 {
+		fmt.Fprintf(os.Stderr, "subdirsByName:\n")
+		for k := range v.subdirsByName {
+			fmt.Fprintf(os.Stderr, " %s\n", k)
+		}
 	}
 	return v, nil
 }
@@ -842,7 +845,7 @@ func copyBytes(dst, src []byte) int {
 // high-level operations on files and directories.
 type operator struct {
 	data  []byte
-	debug bool
+	debug int
 }
 
 var _ types.Operator = operator{}
@@ -865,7 +868,7 @@ func (o operator) HasSubdirs() bool {
 // Catalog returns a catalog of disk entries. subdir should be empty
 // for operating systems that do not support subdirectories.
 func (o operator) Catalog(subdir string) ([]types.Descriptor, error) {
-	if o.debug {
+	if o.debug > 1 {
 		fmt.Fprintf(os.Stderr, "Catalog of %q\n", subdir)
 	}
 	vol, err := readVolume(o.data, 2, o.debug)
@@ -936,14 +939,14 @@ func (of OperatorFactory) Name() string {
 
 // SeemsToMatch returns true if the []byte disk image seems to match the
 // system of this operator.
-func (of OperatorFactory) SeemsToMatch(devicebytes []byte, debug bool) bool {
+func (of OperatorFactory) SeemsToMatch(devicebytes []byte, debug int) bool {
 	// For now, just return true if we can run Catalog successfully.
 	_, err := readVolume(devicebytes, 2, debug)
 	return err == nil
 }
 
 // Operator returns an Operator for the []byte disk image.
-func (of OperatorFactory) Operator(devicebytes []byte, debug bool) (types.Operator, error) {
+func (of OperatorFactory) Operator(devicebytes []byte, debug int) (types.Operator, error) {
 	return operator{data: devicebytes, debug: debug}, nil
 }
 

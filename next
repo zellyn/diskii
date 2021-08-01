@@ -4,3 +4,4 @@ set -euo pipefail
 set -x
 # go run . nakedos mkhello supermon-audit-new.dsk DF02
 # go run . put -f supermon-audit-new.dsk DF02:FWORLD audit.o
+go run . dump ./data/disks/ProDOS_2_4_2.po VIEW.README

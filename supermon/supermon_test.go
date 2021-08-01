@@ -4,7 +4,6 @@ package supermon
 
 import (
 	"os"
-	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -44,20 +43,6 @@ func loadSectorMap(filename string) (SectorMap, []byte, error) {
 		return nil, nil, err
 	}
 	return sm, diskbytes, nil
-}
-
-// getOperator gets a types.Operator for the given NakedOS disk, assumed to be
-// in "do" order.
-func getOperator(filename string) (types.Operator, error) {
-	f, err := os.Open(filepath.Clean(filename))
-	if err != nil {
-		return nil, err
-	}
-	op, _, err := disk.OpenFile(f, "do", "nakedos", []types.OperatorFactory{OperatorFactory{}}, false)
-	if err != nil {
-		return nil, err
-	}
-	return op, nil
 }
 
 // TestReadSectorMap tests the reading of the sector map of a test
@@ -147,7 +132,7 @@ func TestReadSymbolTable(t *testing.T) {
 // TestGetFile tests the retrieval of a file's contents, using the
 // Operator interface.
 func TestGetFile(t *testing.T) {
-	op, err := getOperator(testDisk)
+	op, _, err := disk.OpenFilename(testDisk, types.DiskOrderAuto, "nakedos", []types.OperatorFactory{OperatorFactory{}}, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -228,7 +213,7 @@ func TestReadWriteSymbolTable(t *testing.T) {
 // TestPutFile tests the creation of a file, using the Operator
 // interface.
 func TestPutFile(t *testing.T) {
-	op, err := getOperator(testDisk)
+	op, _, err := disk.OpenFilename(testDisk, types.DiskOrderAuto, "nakedos", []types.OperatorFactory{OperatorFactory{}}, 0)
 	if err != nil {
 		t.Fatal(err)
 	}

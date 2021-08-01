@@ -646,7 +646,7 @@ type Operator struct {
 	data  []byte
 	SM    SectorMap
 	ST    SymbolTable
-	debug bool
+	debug int
 }
 
 var _ types.Operator = Operator{}
@@ -806,7 +806,7 @@ func (of OperatorFactory) Name() string {
 
 // SeemsToMatch returns true if the []byte disk image seems to match the
 // system of this operator.
-func (of OperatorFactory) SeemsToMatch(diskbytes []byte, debug bool) bool {
+func (of OperatorFactory) SeemsToMatch(diskbytes []byte, debug int) bool {
 	// For now, just return true if we can run Catalog successfully.
 	sm, err := LoadSectorMap(diskbytes)
 	if err != nil {
@@ -819,7 +819,7 @@ func (of OperatorFactory) SeemsToMatch(diskbytes []byte, debug bool) bool {
 }
 
 // Operator returns an Operator for the []byte disk image.
-func (of OperatorFactory) Operator(diskbytes []byte, debug bool) (types.Operator, error) {
+func (of OperatorFactory) Operator(diskbytes []byte, debug int) (types.Operator, error) {
 	sm, err := LoadSectorMap(diskbytes)
 	if err != nil {
 		return nil, err
