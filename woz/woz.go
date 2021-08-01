@@ -21,7 +21,7 @@ type Woz struct {
 }
 
 type UnknownChunk struct {
-	Id   string
+	ID   string
 	Data []byte
 }
 
@@ -80,14 +80,14 @@ func (e CRCError) Error() string {
 
 func (d *decoder) info(format string, args ...interface{}) {
 	if !strings.HasSuffix(format, "\n") {
-		format = format + "\n"
+		format += "\n"
 	}
 	fmt.Printf("INFO: "+format, args...)
 }
 
 func (d *decoder) warn(format string, args ...interface{}) {
 	if !strings.HasSuffix(format, "\n") {
-		format = format + "\n"
+		format += "\n"
 	}
 	fmt.Printf("WARN: "+format, args...)
 }
@@ -100,10 +100,7 @@ func (d *decoder) checkHeader() error {
 	if string(d.tmp[:len(wozHeader)]) != wozHeader {
 		return FormatError("not a woz file")
 	}
-	if err := binary.Read(d.r, binary.LittleEndian, &d.crcVal); err != nil {
-		return err
-	}
-	return nil
+	return binary.Read(d.r, binary.LittleEndian, &d.crcVal)
 }
 
 func (d *decoder) parseChunk() (done bool, err error) {
@@ -233,7 +230,7 @@ func (d *decoder) parseUnknown(id string, length uint32) error {
 		return err
 	}
 	d.crc.Write(buf)
-	d.woz.Unknowns = append(d.woz.Unknowns, UnknownChunk{Id: id, Data: buf})
+	d.woz.Unknowns = append(d.woz.Unknowns, UnknownChunk{ID: id, Data: buf})
 	return nil
 }
 

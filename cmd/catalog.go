@@ -38,7 +38,7 @@ func (l *LsCmd) Run(globals *types.Globals) error {
 
 	if l.Directory != "" {
 		if !op.HasSubdirs() {
-			return fmt.Errorf("Disks of type %q cannot have subdirectories", op.Name())
+			return fmt.Errorf("disks of type %q cannot have subdirectories", op.Name())
 		}
 	}
 	fds, err := op.Catalog(l.Directory)

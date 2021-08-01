@@ -169,7 +169,7 @@ func Decode(raw []byte, location uint16) (Listing, error) {
 		ofs += 2
 		for {
 			if ofs >= len(raw) {
-				return nil, fmt.Errorf("Ran out of input at location $%X in line %d", ofs+int(location), line.Num)
+				return nil, fmt.Errorf("ran out of input at location $%X in line %d", ofs+int(location), line.Num)
 			}
 			char := raw[ofs]
 			if char == 0 {

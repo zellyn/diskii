@@ -113,7 +113,7 @@ func readVolumeBitMap(devicebytes []byte, startBlock uint16) (VolumeBitMap, erro
 			return nil, fmt.Errorf("cannot read block %d (device block %d) of Volume Bit Map: %v", i, vbm[i].GetBlock(), err)
 		}
 	}
-	return VolumeBitMap(vbm), nil
+	return vbm, nil
 }
 
 // Write writes the Volume Bit Map to a block device.
@@ -148,7 +148,7 @@ func (dt *DateTime) fromBytes(b []byte) {
 	dt.HM[1] = b[3]
 }
 
-// Validate checks a DateTime for problems, returning a slice of errors
+// Validate checks a DateTime for problems, returning a slice of errors.
 func (dt DateTime) Validate(fieldDescription string) (errors []error) {
 	if dt.HM[0] >= 24 {
 		errors = append(errors, fmt.Errorf("%s expects hour<24; got %d", fieldDescription, dt.HM[0]))
@@ -209,7 +209,7 @@ func (vdkb VolumeDirectoryKeyBlock) Validate() (errors []error) {
 		errors = append(errors, desc.Validate()...)
 	}
 	if vdkb.Extra != 0 {
-		errors = append(errors, fmt.Errorf("Expected last byte of Volume Directory Key Block == 0x0; got 0x%02x", vdkb.Extra))
+		errors = append(errors, fmt.Errorf("expected last byte of Volume Directory Key Block == 0x0; got 0x%02x", vdkb.Extra))
 	}
 	return errors
 }
@@ -256,7 +256,7 @@ func (vdb VolumeDirectoryBlock) Validate() (errors []error) {
 		errors = append(errors, desc.Validate()...)
 	}
 	if vdb.Extra != 0 {
-		errors = append(errors, fmt.Errorf("Expected last byte of Volume Directory Block == 0x0; got 0x%02x", vdb.Extra))
+		errors = append(errors, fmt.Errorf("expected last byte of Volume Directory Block == 0x0; got 0x%02x", vdb.Extra))
 	}
 	return errors
 }
@@ -337,7 +337,7 @@ type FileDescriptor struct {
 	FileType          byte     // ProDOS / SOS filetype
 	KeyPointer        uint16   // block number of key block for file
 	BlocksUsed        uint16   // Total number of blocks used including index blocks and data blocks. For a subdirectory, the number of directory blocks
-	Eof               [3]byte  // 3-byte offset of EOF from first byte. For sequential files, just the length
+	EOF               [3]byte  // 3-byte offset of EOF from first byte. For sequential files, just the length
 	Creation          DateTime // Date and time of of file creation
 	Version           byte
 	MinVersion        byte
@@ -357,7 +357,7 @@ func (fd FileDescriptor) descriptor() types.Descriptor {
 	desc := types.Descriptor{
 		Name:   fd.Name(),
 		Blocks: int(fd.BlocksUsed),
-		Length: int(fd.Eof[0]) + int(fd.Eof[1])<<8 + int(fd.Eof[2])<<16,
+		Length: int(fd.EOF[0]) + int(fd.EOF[1])<<8 + int(fd.EOF[2])<<16,
 		Locked: false, // TODO(zellyn): use prodos-style access in types.Descriptor
 		Type:   types.Filetype(fd.FileType),
 	}
@@ -382,7 +382,7 @@ func (fd FileDescriptor) toBytes() []byte {
 	buf[0x10] = fd.FileType
 	binary.LittleEndian.PutUint16(buf[0x11:0x13], fd.KeyPointer)
 	binary.LittleEndian.PutUint16(buf[0x13:0x15], fd.BlocksUsed)
-	copyBytes(buf[0x15:0x18], fd.Eof[:])
+	copyBytes(buf[0x15:0x18], fd.EOF[:])
 	copyBytes(buf[0x18:0x1c], fd.Creation.toBytes())
 	buf[0x1c] = fd.Version
 	buf[0x1d] = fd.MinVersion
@@ -403,7 +403,7 @@ func (fd *FileDescriptor) fromBytes(buf []byte) {
 	fd.FileType = buf[0x10]
 	fd.KeyPointer = binary.LittleEndian.Uint16(buf[0x11:0x13])
 	fd.BlocksUsed = binary.LittleEndian.Uint16(buf[0x13:0x15])
-	copyBytes(fd.Eof[:], buf[0x15:0x18])
+	copyBytes(fd.EOF[:], buf[0x15:0x18])
 	fd.Creation.fromBytes(buf[0x18:0x1c])
 	fd.Version = buf[0x1c]
 	fd.MinVersion = buf[0x1d]
@@ -485,7 +485,7 @@ func (skb SubdirectoryKeyBlock) Validate() (errors []error) {
 		errors = append(errors, desc.Validate()...)
 	}
 	if skb.Extra != 0 {
-		errors = append(errors, fmt.Errorf("Expected last byte of Subdirectory Key Block == 0x0; got 0x%02x", skb.Extra))
+		errors = append(errors, fmt.Errorf("expected last byte of Subdirectory Key Block == 0x0; got 0x%02x", skb.Extra))
 	}
 	return errors
 }
@@ -532,7 +532,7 @@ func (sb SubdirectoryBlock) Validate() (errors []error) {
 		errors = append(errors, desc.Validate()...)
 	}
 	if sb.Extra != 0 {
-		errors = append(errors, fmt.Errorf("Expected last byte of Subdirectory Block == 0x0; got 0x%02x", sb.Extra))
+		errors = append(errors, fmt.Errorf("expected last byte of Subdirectory Block == 0x0; got 0x%02x", sb.Extra))
 	}
 	return errors
 }
@@ -598,7 +598,7 @@ func (sh *SubdirectoryHeader) fromBytes(buf []byte) {
 // Validate validates a SubdirectoryHeader for valid values.
 func (sh SubdirectoryHeader) Validate() (errors []error) {
 	if sh.SeventyFive != 0x75 {
-		errors = append(errors, fmt.Errorf("Byte after subdirectory name %q should be 0x75; got 0x%02x", sh.Name(), sh.SeventyFive))
+		errors = append(errors, fmt.Errorf("byte after subdirectory name %q should be 0x75; got 0x%02x", sh.Name(), sh.SeventyFive))
 	}
 	errors = append(errors, sh.Creation.Validate(fmt.Sprintf("subdirectory %q header creation date/time", sh.Name()))...)
 	return errors
@@ -669,11 +669,12 @@ func readVolume(devicebytes []byte, keyBlock uint16, debug bool) (Volume, error)
 	// 	fmt.Fprintf(os.Stderr, "keyblock: %#v\n", v.keyBlock)
 	// }
 
-	if vbm, err := readVolumeBitMap(devicebytes, v.keyBlock.Header.BitMapPointer); err != nil {
+	vbm, err := readVolumeBitMap(devicebytes, v.keyBlock.Header.BitMapPointer)
+	if err != nil {
 		return v, err
-	} else {
-		v.bitmap = &vbm
 	}
+
+	v.bitmap = &vbm
 
 	// if debug {
 	// 	fmt.Fprintf(os.Stderr, "volume bitmap: %#v\n", v.bitmap)
@@ -780,7 +781,7 @@ func parentDirName(parentDirectoryBlock uint16, keyBlock uint16, subdirMap map[u
 		}
 	}
 	if sd == nil {
-		return "", fmt.Errorf("Unable to find subdirectory for block %d", parentDirectoryBlock)
+		return "", fmt.Errorf("unable to find subdirectory for block %d", parentDirectoryBlock)
 	}
 
 	parentName, err := parentDirName(sd.keyBlock.Header.ParentPointer, keyBlock, subdirMap, firstSubdirBlockMap)

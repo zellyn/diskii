@@ -9,7 +9,7 @@ import (
 )
 
 func TestBasicLoad(t *testing.T) {
-	wz, err := woz.Decode(bytes.NewReader(data.DOS33master_woz))
+	wz, err := woz.Decode(bytes.NewReader(data.DOS33masterWOZ))
 	if err != nil {
 		t.Fatal(err)
 	}

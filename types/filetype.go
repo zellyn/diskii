@@ -55,6 +55,7 @@ const (
 	// | 12-18 | SOS    | SOS reserved for future use
 	// | 1C-BF | SOS    | SOS reserved for future use
 	// | C0-EE | ProDOS | ProDOS reserved for future use
+	// End.
 )
 
 // FiletypeInfo holds name information about filetype constants.
@@ -70,7 +71,7 @@ type FiletypeInfo struct {
 	NamesString string // (Generated) the names usable for this filetype.
 }
 
-// names of Filetype constants above
+// Names of Filetype constants above.
 var filetypeInfos = []FiletypeInfo{
 	{Type: FiletypeTypeless, Name: "Typeless", Desc: "Typeless file"},
 	{Type: FiletypeBadBlocks, Name: "BadBlocks", Desc: "Bad blocks file"},
@@ -183,7 +184,7 @@ func FiletypeForName(name string) (Filetype, error) {
 			return info.Type, nil
 		}
 	}
-	return 0, fmt.Errorf("Unknown Filetype: %q", name)
+	return 0, fmt.Errorf("unknown Filetype: %q", name)
 }
 
 // FiletypeInfos returns a list information on all filetypes.

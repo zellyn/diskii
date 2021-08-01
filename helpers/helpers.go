@@ -31,5 +31,5 @@ func WriteOutput(filename string, contents []byte, force bool) error {
 			return fmt.Errorf("cannot overwrite file %q without --force (-f)", filename)
 		}
 	}
-	return os.WriteFile(filename, contents, 0666)
+	return os.WriteFile(filename, contents, 0600)
 }

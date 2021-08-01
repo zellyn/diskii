@@ -1,0 +1,15 @@
+linters:
+  enable:
+    - gocritic
+    - godot
+    - gofmt
+    - gosec
+    - ifshort
+    - misspell
+    - nakedret
+    - nilerr
+    - predeclared
+    - revive
+    - stylecheck
+    - unconvert
+    - wastedassign

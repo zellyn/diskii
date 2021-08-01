@@ -75,10 +75,7 @@ func (sm SectorMap) Persist(diskbytes []byte) error {
 	if err := disk.WriteSector(diskbytes, 0, 0xA, sm[0x30:0x130]); err != nil {
 		return err
 	}
-	if err := disk.WriteSector(diskbytes, 0, 0xB, sm[0x130:0x230]); err != nil {
-		return err
-	}
-	return nil
+	return disk.WriteSector(diskbytes, 0, 0xB, sm[0x130:0x230])
 }
 
 // FreeSectors returns the number of blocks free in a sector map.
@@ -96,7 +93,7 @@ func (sm SectorMap) FreeSectors() int {
 func (sm SectorMap) Verify() error {
 	for sector := byte(0); sector <= 0xB; sector++ {
 		if file := sm.FileForSector(0, sector); file != FileReserved {
-			return fmt.Errorf("Expected track 0, sectors 0-C to be reserved (0xFE), but got 0x%02X in sector %X", file, sector)
+			return fmt.Errorf("expected track 0, sectors 0-C to be reserved (0xFE), but got 0x%02X in sector %X", file, sector)
 		}
 	}
 
@@ -104,7 +101,7 @@ func (sm SectorMap) Verify() error {
 		for sector := byte(0); sector < 16; sector++ {
 			file := sm.FileForSector(track, sector)
 			if file == FileIllegal {
-				return fmt.Errorf("Found illegal sector map value (%02X), in track %X sector %X", FileIllegal, track, sector)
+				return fmt.Errorf("found illegal sector map value (%02X), in track %X sector %X", FileIllegal, track, sector)
 			}
 		}
 	}
@@ -254,14 +251,14 @@ func decodeSymbol(five []byte, extra byte) string {
 	value := uint64(five[0]) + uint64(five[1])<<8 + uint64(five[2])<<16 + uint64(five[3])<<24 + uint64(five[4])<<32 + uint64(extra)<<40
 	for value&0x1f > 0 {
 		if value&0x1f < 27 {
-			result = result + string(rune(value&0x1f+'@'))
+			result += string(rune(value&0x1f + '@'))
 			value >>= 5
 			continue
 		}
 		if value&0x20 == 0 {
-			result = result + string(rune((value&0x1f)-0x1b+'0'))
+			result += string(rune((value & 0x1f) - 0x1b + '0'))
 		} else {
-			result = result + string(rune((value&0x1f)-0x1b+'5'))
+			result += string(rune((value & 0x1f) - 0x1b + '5'))
 		}
 		value >>= 6
 	}
@@ -345,10 +342,10 @@ func (sm SectorMap) ReadSymbolTable(diskbytes []byte) (SymbolTable, error) {
 		link := -1
 		if linkAddr != 0 {
 			if linkAddr < 0xD000 || linkAddr >= 0xDFFF {
-				return nil, fmt.Errorf("Expected symbol table link address between 0xD000 and 0xDFFE; got 0x%04X", linkAddr)
+				return nil, fmt.Errorf("expected symbol table link address between 0xD000 and 0xDFFE; got 0x%04X", linkAddr)
 			}
 			if (linkAddr-0xD000)%5 != 0 {
-				return nil, fmt.Errorf("Expected symbol table link address to 0xD000+5x; got 0x%04X", linkAddr)
+				return nil, fmt.Errorf("expected symbol table link address to 0xD000+5x; got 0x%04X", linkAddr)
 			}
 			link = (int(linkAddr) - 0xD000) / 5
 		}
@@ -583,6 +580,7 @@ func (st SymbolTable) ParseCompoundSymbol(name string) (address uint16, symAddre
 		}
 		// If it's a valid symbol name, assume that's what it is.
 		if _, err := encodeSymbol(name); err != nil {
+			//nolint:nilerr
 			return 0, 0, name, nil
 		}
 		return 0, 0, "", fmt.Errorf("%q is not a valid symbol name or address", name)
@@ -622,6 +620,7 @@ func (st SymbolTable) FilesForCompoundName(filename string) (numFile byte, named
 		}
 		file, err := st.FileForName(filename)
 		if err != nil {
+			//nolint:nilerr
 			return 0, 0, filename, nil
 		}
 		return file, file, filename, nil
@@ -635,6 +634,7 @@ func (st SymbolTable) FilesForCompoundName(filename string) (numFile byte, named
 	}
 	namedFile, err = st.FileForName(parts[1])
 	if err != nil {
+		//nolint:nilerr
 		return numFile, 0, parts[1], nil
 	}
 	return numFile, namedFile, parts[1], nil

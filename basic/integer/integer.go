@@ -228,7 +228,7 @@ func (l Line) String() string {
 				break
 			}
 		} else {
-			ch = ch - 0x80
+			ch -= 0x80
 			if !lastAN && ch >= '0' && ch <= '9' {
 				if len(l.Bytes) < i+3 {
 					buf.WriteByte('?')

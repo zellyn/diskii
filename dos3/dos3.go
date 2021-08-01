@@ -397,7 +397,7 @@ func (fd *FileDesc) Contents(diskbytes []byte) ([]byte, error) {
 	for nextTrack != 0 || nextSector != 0 {
 		ts := disk.TrackSector{Track: nextTrack, Sector: nextSector}
 		if seen[ts] {
-			return nil, fmt.Errorf("File %q tries to read TrackSector track=%d sector=%d twice", fd.FilenameString(), nextTrack, nextSector)
+			return nil, fmt.Errorf("file %q tries to read TrackSector track=%d sector=%d twice", fd.FilenameString(), nextTrack, nextSector)
 		}
 		seen[ts] = true
 		tsl := TrackSectorList{}
@@ -497,7 +497,7 @@ func readCatalogSectors(diskbytes []byte, debug bool) ([]CatalogSector, error) {
 		return nil, err
 	}
 	if err := v.Validate(); err != nil {
-		return nil, fmt.Errorf("Invalid VTOC sector: %v", err)
+		return nil, fmt.Errorf("invalid VTOC sector: %v", err)
 	}
 
 	nextTrack := v.CatalogTrack
@@ -599,7 +599,7 @@ func (o operator) fileForFilename(filename string) (FileDesc, error) {
 			return fd, nil
 		}
 	}
-	return FileDesc{}, fmt.Errorf("Filename %q not found", filename)
+	return FileDesc{}, fmt.Errorf("filename %q not found", filename)
 }
 
 // GetFile retrieves a file by name.

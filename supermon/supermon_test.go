@@ -17,7 +17,7 @@ const testDisk = "testdata/chacha20.dsk"
 
 const cities = `It was the best of times, it was the worst of times, it was the age of wisdom, it was the age of foolishness, it was the epoch of belief, it was the epoch of incredulity, it was the season of Light, it was the season of Darkness, it was the spring of hope, it was the winter of despair, we had everything before us, we had nothing before us, we were all going direct to Heaven, we were all going direct the other way - in short, the period was so far like the present period, that some of its noisiest authorities insisted on its being received, for good or for evil, in the superlative degree of comparison only.`
 
-// The extra newline pads us to 256 bytes…
+// The extra newline pads us to 256 bytes.
 const hamlet = `To be, or not to be, that is the question:
 Whether 'tis Nobler in the mind to suffer
 The Slings and Arrows of outrageous Fortune,
@@ -154,9 +154,7 @@ func TestGetFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := string(file.Data)
-	want := hamlet
-	if got != want {
+	if want, got := hamlet, string(file.Data); got != want {
 		t.Errorf("Incorrect result for GetFile(\"TOBE\"): want %q; got %q", want, got)
 	}
 }
@@ -255,8 +253,7 @@ func TestPutFile(t *testing.T) {
 		t.Fatal(err)
 	}
 	last := fds[len(fds)-1]
-	want := "DF0B:FNEWFILE"
-	if got := last.Fullname; got != want {
+	if want, got := "DF0B:FNEWFILE", last.Fullname; got != want {
 		t.Fatalf("Want last file on disk's FullName=%q; got %q", want, got)
 	}
 }
