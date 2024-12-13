@@ -850,7 +850,7 @@ type operator struct {
 
 var _ types.Operator = operator{}
 
-// operatorName is the keyword name for the operator that undestands
+// operatorName is the keyword name for the operator that understands
 // prodos disks/devices.
 const operatorName = "prodos"
 
